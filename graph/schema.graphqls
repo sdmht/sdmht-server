@@ -1,0 +1,21 @@
+scalar Time
+scalar Void
+scalar JSON
+
+type Query {
+  time: Time!
+}
+
+type Subscription {
+  # 玩家1开始匹配，然后等待中，当玩家2也开始匹配时，并且size和version都相同时，匹配成功，然后创建房间，玩家2返回空字符串表示后手连接方，然后双方玩家收到对方的uid，最后转为监听，当玩家使用sendData接口发送数据时，从此接口返回数据。
+  matchOpponent(uid: String!, size: Int! = 4, version: String! = ""): JSON!
+  # 发送数据，to为对方的uid，data为发送的数据，无需返回值。
+  sendData(to: String!, data: JSON!): Void
+  # 玩家发送自己的uid，然后循环每秒更新一下此uid的最后活跃时间，期间无需返回，当超过3秒没有更新，则认为玩家已掉线，此时直接返回nil即可。
+  heartbeat(uid: String!): Void
+  # 玩家监听对手是否在线，直到对手掉线时，返回nil
+  listenAlive(uid: String!): Void
+  # 返回在线玩家数量，而非匹配玩家数量，实时更新，在客户端首次发起以及后续每次变更时返回。
+  onlineCount: Int!
+  time: Time!
+}

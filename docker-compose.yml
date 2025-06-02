@@ -1,0 +1,26 @@
+services:
+  db:
+    image: postgres:17-alpine
+    restart: always
+    shm_size: 128mb
+    environment:
+      TZ: Asia/Shanghai
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD}
+      PGDATA: /var/lib/postgresql/data/pgdata
+    volumes:
+      - ./db:/var/lib/postgresql/data
+    ports:
+      - target: 5432
+        published: 10002
+  server:
+    image: ghcr.io/sdmht/sdmht-server
+    restart: always
+    ports:
+      - target: 8000
+        published: 10003
+    environment:
+      TZ: Asia/Shanghai
+      GIN_MODE: release
+      DATABASE_URL: psql://postgres:${POSTGRES_PASSWORD}@db:5432/postgres
+    depends_on:
+      - db
