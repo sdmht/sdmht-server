@@ -21,6 +21,6 @@ services:
     environment:
       TZ: Asia/Shanghai
       GIN_MODE: release
-      GORM_DSN: host=db user=postgres password=${POSTGRES_PASSWORD} dbname=postgres port=5432 sslmode=disable TimeZone=Asia/Shanghai
+      GORM_DSN: host=db user=postgres password=${POSTGRES_PASSWORD} dbname=postgres port=5432 sslmode=disable
     depends_on:
       - db
