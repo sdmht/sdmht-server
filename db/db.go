@@ -13,7 +13,7 @@ import (
 var DB *gorm.DB
 
 func SetupDB() {
-	dsn, exists := os.LookupEnv("GORM_DSN")
+	dsn, exists := os.LookupEnv("DATABASE_URL")
 	var dialector gorm.Dialector
 	if exists {
 		dialector = postgres.Open(dsn)
