@@ -16,7 +16,7 @@ jobs:
       packages: write
       attestations: write
       id-token: write
-    name: 测试成功后构建并推送Docker镜像
+    name: 测试并部署
     steps:
       - name: 签出存储库
         uses: actions/checkout@v4
