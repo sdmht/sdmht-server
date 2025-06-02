@@ -57,12 +57,14 @@ jobs:
           SSH_USER: ${{ secrets.SSH_USER }}
           SSH_PORT: ${{ secrets.SSH_PORT }}
           SSH_KEY: ${{ secrets.SSH_KEY }}
-          DEPLOY_PATH: /srv/http/${{ env.IMAGE_NAME }}
+          DEPLOY_PATH: /srv/http/${{ github.event.repository.name }}
         run: |
           mkdir -p ~/.ssh
           echo "$SSH_KEY" > ~/.ssh/id_rsa
           chmod 600 ~/.ssh/id_rsa
           ssh-keyscan -p $SSH_PORT $SSH_HOST >> ~/.ssh/known_hosts
+          echo "POSTGRES_PASSWORD=${{ secrets.POSTGRES_PASSWORD }}" > .env
           ssh -p $SSH_PORT $SSH_USER@$SSH_HOST "mkdir -p $DEPLOY_PATH"
+          scp -P $SSH_PORT .env $SSH_USER@$SSH_HOST:$DEPLOY_PATH/docker-compose.yml
           scp -P $SSH_PORT docker-compose.yml $SSH_USER@$SSH_HOST:$DEPLOY_PATH/docker-compose.yml
           ssh -p $SSH_PORT $SSH_USER@$SSH_HOST "cd $DEPLOY_PATH && docker compose up -d"
