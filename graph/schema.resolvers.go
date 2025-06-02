@@ -62,7 +62,7 @@ func (r *subscriptionResolver) MatchOpponent(ctx context.Context, uid string, si
 
 // SendData is the resolver for the sendData field.
 func (r *subscriptionResolver) SendData(ctx context.Context, to string, data any) (<-chan *Void, error) {
-	log.Print("给 ", to, " 发送数据：", data)
+	log.Print("向 ", to, " 发送数据：", data)
 	ch := make(chan *Void)
 	defer close(ch)
 	r.game.Pmu.RLock()
