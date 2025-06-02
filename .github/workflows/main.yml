@@ -65,6 +65,6 @@ jobs:
           ssh-keyscan -p $SSH_PORT $SSH_HOST >> ~/.ssh/known_hosts
           echo "POSTGRES_PASSWORD=${{ secrets.POSTGRES_PASSWORD }}" > .env
           ssh -p $SSH_PORT $SSH_USER@$SSH_HOST "mkdir -p $DEPLOY_PATH"
-          scp -P $SSH_PORT .env $SSH_USER@$SSH_HOST:$DEPLOY_PATH/docker-compose.yml
-          scp -P $SSH_PORT docker-compose.yml $SSH_USER@$SSH_HOST:$DEPLOY_PATH/docker-compose.yml
+          scp -P $SSH_PORT .env $SSH_USER@$SSH_HOST:$DEPLOY_PATH
+          scp -P $SSH_PORT docker-compose.yml $SSH_USER@$SSH_HOST:$DEPLOY_PATH
           ssh -p $SSH_PORT $SSH_USER@$SSH_HOST "cd $DEPLOY_PATH && docker compose up -d"
