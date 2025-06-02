@@ -21,6 +21,6 @@ services:
     environment:
       TZ: Asia/Shanghai
       GIN_MODE: release
-      DATABASE_URL: psql://postgres:${POSTGRES_PASSWORD}@db:5432/postgres
+      GORM_DSN: host=db user=postgres password=${POSTGRES_PASSWORD} dbname=postgres port=5432 sslmode=disable TimeZone=Asia/Shanghai
     depends_on:
       - db
