@@ -13,7 +13,7 @@ services:
       - target: 5432
         published: 10002
   server:
-    image: ghcr.io/sdmht/sdmht-server
+    image: ghcr.io/sdmht/sdmht-server:main
     restart: always
     ports:
       - target: 8000
