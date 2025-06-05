@@ -4,25 +4,23 @@ import (
 	"log"
 	"sync"
 
-	"github.com/btvoidx/mint"
 	"github.com/emirpasic/gods/lists/arraylist"
+	"github.com/olebedev/emitter"
 )
 
 type Player struct {
-	Size        int32
-	Version     string
-	DataChannel chan any
+	Size    int32
+	Version string
 }
 
 type PlayerMap map[string]Player
 
 type Game struct {
 	online_uids    arraylist.List
-	online_changed mint.Emitter
-	leave          mint.Emitter
 	Player         PlayerMap
-	Pmu            sync.RWMutex
 	MatchingPlayer PlayerMap
+	Pmu            sync.RWMutex
+	Event          emitter.Emitter
 }
 
 func NewGame() *Game {
@@ -39,11 +37,7 @@ func (g *Game) OnlineCount() int32 {
 func (g *Game) OnlineChanged() {
 	v := g.OnlineCount()
 	log.Print(v, " 在线")
-	mint.Emit(&g.online_changed, v)
-}
-
-func (g *Game) OnOnlineChanged(fn func(int32)) (off func() <-chan struct{}) {
-	return mint.On(&g.online_changed, fn)
+	g.Event.Emit("online_changed", v)
 }
 
 func (g *Game) Join(uid string) {
@@ -56,22 +50,9 @@ func (g *Game) Leave(uid string) {
 	log.Print(uid, " 离开")
 	g.online_uids.Remove(g.online_uids.IndexOf(uid))
 	g.OnlineChanged()
-	mint.Emit(&g.leave, uid)
+	g.Event.Emit("leave" + uid)
 }
 
 func (g *Game) IsOnline(uid string) bool {
 	return g.online_uids.Contains(uid)
-}
-
-func (g *Game) OnLeave(uid string, ch chan any) (off func() <-chan struct{}) {
-	go func() {
-		if !g.IsOnline(uid) {
-			ch <- nil
-		}
-	}()
-	return mint.On(&g.leave, func(luid string) {
-		if uid == luid {
-			ch <- nil
-		}
-	})
 }
