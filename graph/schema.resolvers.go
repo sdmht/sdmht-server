@@ -42,7 +42,7 @@ func (r *subscriptionResolver) MatchOpponent(ctx context.Context, uid string, si
 			if p.Size == size && p.Version == version && o_uid != uid {
 				log.Print(uid, " 匹配到 ", o_uid)
 				delete(r.game.MatchingPlayer, o_uid)
-				r.game.Player[o_uid].DataChannel <- uid
+				p.DataChannel <- uid
 				ch <- ""
 				ch <- o_uid
 				is_matched = true
@@ -66,10 +66,10 @@ func (r *subscriptionResolver) SendData(ctx context.Context, to string, data any
 	ch := make(chan *Void)
 	defer close(ch)
 	r.game.Pmu.RLock()
+	defer r.game.Pmu.RUnlock()
 	if p, ok := r.game.Player[to]; ok {
 		p.DataChannel <- data
 	}
-	r.game.Pmu.RUnlock()
 	return ch, nil
 }
 
