@@ -21,17 +21,12 @@ func (r *queryResolver) Time(ctx context.Context) (*time.Time, error) {
 func (r *subscriptionResolver) MatchOpponent(ctx context.Context, uid string, size int32, version string) (<-chan any, error) {
 	log.Print(uid, " 匹配")
 	ch := make(chan any, 10)
-	r.game.Pmu.Lock()
-	r.game.Player[uid] = game.Player{
-		Size:    size,
-		Version: version,
-	}
 	go func() {
-		for event := range r.game.Event.On("send_data" + uid) {
-			ch <- event.Args[0]
+		r.game.Pmu.Lock()
+		r.game.Player[uid] = game.Player{
+			Size:    size,
+			Version: version,
 		}
-	}()
-	go func() {
 		is_matched := false
 		defer func() {
 			r.game.Pmu.Lock()
@@ -56,8 +51,10 @@ func (r *subscriptionResolver) MatchOpponent(ctx context.Context, uid string, si
 			r.game.MatchingPlayer[uid] = r.game.Player[uid]
 		}
 		r.game.Pmu.Unlock()
-		<-ctx.Done()
-		log.Print(uid, " 匹配结束")
+		defer log.Print(uid, " 匹配结束")
+		for event := range r.game.Event.On("send_data" + uid) {
+			ch <- event.Args[0]
+		}
 	}()
 	return ch, nil
 }
@@ -74,8 +71,8 @@ func (r *subscriptionResolver) SendData(ctx context.Context, to string, data any
 // Heartbeat is the resolver for the heartbeat field.
 func (r *subscriptionResolver) Heartbeat(ctx context.Context, uid string) (<-chan *Void, error) {
 	ch := make(chan *Void)
-	r.game.Join(uid)
 	go func() {
+		r.game.Join(uid)
 		defer r.game.Leave(uid)
 		defer close(ch)
 		<-ctx.Done()
@@ -101,10 +98,10 @@ func (r *subscriptionResolver) ListenAlive(ctx context.Context, uid string) (<-c
 
 // OnlineCount is the resolver for the onlineCount field.
 func (r *subscriptionResolver) OnlineCount(ctx context.Context) (<-chan int32, error) {
-	ch := make(chan int32, 1)
-	ch <- r.game.OnlineCount()
+	ch := make(chan int32)
 	go func() {
 		defer close(ch)
+		ch <- r.game.OnlineCount()
 		for event := range r.game.Event.On("online_changed") {
 			ch <- event.Args[0].(int32)
 		}
@@ -115,8 +112,8 @@ func (r *subscriptionResolver) OnlineCount(ctx context.Context) (<-chan int32, e
 // Time is the resolver for the time field.
 func (r *subscriptionResolver) Time(ctx context.Context) (<-chan *time.Time, error) {
 	ch := make(chan *time.Time)
-	ticker := time.NewTicker(1 * time.Second)
 	go func() {
+		ticker := time.NewTicker(1 * time.Second)
 		defer close(ch)
 		defer ticker.Stop()
 		now := time.Now()
