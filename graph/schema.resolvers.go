@@ -23,7 +23,8 @@ func (r *queryResolver) Time(ctx context.Context) (*time.Time, error) {
 func (r *subscriptionResolver) MatchOpponent(ctx context.Context, uid string, size int32, version string) (<-chan any, error) {
 	log.Print(uid, " 匹配")
 	ch := make(chan any, 1)
-	r.game.Event.On("send_data"+uid, func(e *emitter.Event) {
+	topic := "send_data" + uid
+	off := r.game.Event.On(topic, func(e *emitter.Event) {
 		ch <- e.Args[0]
 	})
 	r.game.Pmu.Lock()
@@ -37,6 +38,7 @@ func (r *subscriptionResolver) MatchOpponent(ctx context.Context, uid string, si
 			delete(r.game.MatchingPlayer, uid)
 			delete(r.game.Player, uid)
 			r.game.Pmu.Unlock()
+			r.game.Event.Off(topic, off)
 			close(ch)
 		}()
 		is_matched := false
@@ -92,9 +94,11 @@ func (r *subscriptionResolver) ListenAlive(ctx context.Context, uid string) (<-c
 			ch <- nil
 			return
 		}
-		r.game.Event.On("leave"+uid, func(e *emitter.Event) {
+		topic := "leave" + uid
+		off := r.game.Event.On(topic, func(e *emitter.Event) {
 			ch <- nil
 		})
+		defer r.game.Event.Off(topic, off)
 		<-ctx.Done()
 	}()
 	return ch, nil
@@ -106,9 +110,10 @@ func (r *subscriptionResolver) OnlineCount(ctx context.Context) (<-chan int32, e
 	ch <- r.game.OnlineCount()
 	go func() {
 		defer close(ch)
-		r.game.Event.On("online_changed", func(e *emitter.Event) {
+		off := r.game.Event.On("online_changed", func(e *emitter.Event) {
 			ch <- e.Args[0].(int32)
 		})
+		defer r.game.Event.Off("online_changed", off)
 		<-ctx.Done()
 	}()
 	return ch, nil
