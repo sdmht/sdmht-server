@@ -20,17 +20,17 @@ func (r *queryResolver) Time(ctx context.Context) (*time.Time, error) {
 // MatchOpponent is the resolver for the matchOpponent field.
 func (r *subscriptionResolver) MatchOpponent(ctx context.Context, uid string, size int32, version string) (<-chan any, error) {
 	log.Print(uid, " 匹配")
-	ch := make(chan any, 10)
-	r.game.Pmu.Lock()
-	r.game.Player[uid] = game.Player{
-		Size:    size,
-		Version: version,
-	}
+	ch := make(chan any, 1)
 	go func() {
 		for event := range r.game.Event.On("send_data" + uid) {
 			ch <- event.Args[0]
 		}
 	}()
+	r.game.Pmu.Lock()
+	r.game.Player[uid] = game.Player{
+		Size:    size,
+		Version: version,
+	}
 	go func() {
 		defer func() {
 			r.game.Pmu.Lock()
@@ -65,7 +65,7 @@ func (r *subscriptionResolver) MatchOpponent(ctx context.Context, uid string, si
 // SendData is the resolver for the sendData field.
 func (r *subscriptionResolver) SendData(ctx context.Context, to string, data any) (<-chan *Void, error) {
 	log.Print("向 ", to, " 发送数据：", data)
-	ch := make(chan *Void)
+	ch := make(chan *Void, 1)
 	defer close(ch)
 	r.game.Event.Emit("send_data"+to, data)
 	return ch, nil
@@ -73,7 +73,7 @@ func (r *subscriptionResolver) SendData(ctx context.Context, to string, data any
 
 // Heartbeat is the resolver for the heartbeat field.
 func (r *subscriptionResolver) Heartbeat(ctx context.Context, uid string) (<-chan *Void, error) {
-	ch := make(chan *Void)
+	ch := make(chan *Void, 1)
 	r.game.Join(uid)
 	go func() {
 		defer r.game.Leave(uid)
@@ -85,7 +85,7 @@ func (r *subscriptionResolver) Heartbeat(ctx context.Context, uid string) (<-cha
 
 // ListenAlive is the resolver for the listenAlive field.
 func (r *subscriptionResolver) ListenAlive(ctx context.Context, uid string) (<-chan *Void, error) {
-	ch := make(chan *Void)
+	ch := make(chan *Void, 1)
 	go func() {
 		defer close(ch)
 		if !r.game.IsOnline(uid) {
@@ -101,7 +101,7 @@ func (r *subscriptionResolver) ListenAlive(ctx context.Context, uid string) (<-c
 
 // OnlineCount is the resolver for the onlineCount field.
 func (r *subscriptionResolver) OnlineCount(ctx context.Context) (<-chan int32, error) {
-	ch := make(chan int32, 10)
+	ch := make(chan int32, 1)
 	ch <- r.game.OnlineCount()
 	go func() {
 		defer close(ch)
@@ -114,7 +114,7 @@ func (r *subscriptionResolver) OnlineCount(ctx context.Context) (<-chan int32, e
 
 // Time is the resolver for the time field.
 func (r *subscriptionResolver) Time(ctx context.Context) (<-chan *time.Time, error) {
-	ch := make(chan *time.Time)
+	ch := make(chan *time.Time, 1)
 	ticker := time.NewTicker(1 * time.Second)
 	go func() {
 		defer ticker.Stop()

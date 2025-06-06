@@ -45,6 +45,40 @@ func TestSubscriptionTime(t *testing.T) {
 	a.NoError(sub.Close())
 }
 
+func TestSubscriptionOnlineCount(t *testing.T) {
+	a := assert.New(t)
+	srv := setupGraphqlService()
+	c := client.New(srv)
+	count := 0
+	for i := 0; i < 100; i++ {
+		go func() {
+			sub := c.Websocket("subscription { onlineCount }")
+			var msg map[string]int32
+			for j := 0; j <= 100; j++ {
+				a.NoError(sub.Next(&msg))
+				a.EqualValues(j, msg["onlineCount"])
+			}
+			for j := 99; j >= 0; j-- {
+				a.NoError(sub.Next(&msg))
+				a.EqualValues(j, msg["onlineCount"])
+			}
+			a.NoError(sub.Close())
+			count++
+		}()
+	}
+	time.Sleep(100 * time.Millisecond)
+	for i := 0; i < 100; i++ {
+		go func() {
+			hb := c.Websocket("subscription heartbeat($uid: String!) { heartbeat(uid: $uid) }", client.Var("uid", i))
+			time.Sleep(1000 * time.Millisecond)
+			a.NoError(hb.Close())
+		}()
+		time.Sleep(9 * time.Millisecond)
+	}
+	time.Sleep(1000 * time.Millisecond)
+	a.Equal(100, count)
+}
+
 func TestSubscriptionOnline(t *testing.T) {
 	a := assert.New(t)
 	srv := setupGraphqlService()
