@@ -115,15 +115,12 @@ func (r *subscriptionResolver) ListenAlive(ctx context.Context, uid string) (<-c
 // OnlineCount is the resolver for the onlineCount field.
 func (r *subscriptionResolver) OnlineCount(ctx context.Context) (<-chan int32, error) {
 	ch := make(chan int32, 1)
-	go func() {
-		for event := range r.game.Event.On("online_changed") {
-			ch <- event.Args[0].(int32)
-		}
-	}()
 	ch <- r.game.OnlineCount()
 	go func() {
 		defer close(ch)
-		<-ctx.Done()
+		for event := range r.game.Event.On("online_changed") {
+			ch <- event.Args[0].(int32)
+		}
 	}()
 	return ch, nil
 }
