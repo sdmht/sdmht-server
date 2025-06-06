@@ -20,7 +20,7 @@ func (r *queryResolver) Time(ctx context.Context) (*time.Time, error) {
 // MatchOpponent is the resolver for the matchOpponent field.
 func (r *subscriptionResolver) MatchOpponent(ctx context.Context, uid string, size int32, version string) (<-chan any, error) {
 	log.Print(uid, " 匹配")
-	ch := make(chan any)
+	ch := make(chan any, 10)
 	r.game.Pmu.Lock()
 	r.game.Player[uid] = game.Player{
 		Size:    size,
