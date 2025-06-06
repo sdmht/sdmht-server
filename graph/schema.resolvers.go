@@ -9,6 +9,8 @@ import (
 	"log"
 	"sdmht-server/game"
 	"time"
+
+	"github.com/olebedev/emitter"
 )
 
 // Time is the resolver for the time field.
@@ -21,11 +23,9 @@ func (r *queryResolver) Time(ctx context.Context) (*time.Time, error) {
 func (r *subscriptionResolver) MatchOpponent(ctx context.Context, uid string, size int32, version string) (<-chan any, error) {
 	log.Print(uid, " 匹配")
 	ch := make(chan any, 1)
-	go func() {
-		for event := range r.game.Event.On("send_data" + uid) {
-			ch <- event.Args[0]
-		}
-	}()
+	r.game.Event.On("send_data"+uid, func(e *emitter.Event) {
+		ch <- e.Args[0]
+	})
 	r.game.Pmu.Lock()
 	r.game.Player[uid] = game.Player{
 		Size:    size,
@@ -44,7 +44,7 @@ func (r *subscriptionResolver) MatchOpponent(ctx context.Context, uid string, si
 			if p.Size == size && p.Version == version && o_uid != uid {
 				log.Print(uid, " 匹配到 ", o_uid)
 				delete(r.game.MatchingPlayer, o_uid)
-				r.game.Event.Emit("send_data"+o_uid, uid)
+				go r.game.Event.Emit("send_data"+o_uid, uid)
 				ch <- ""
 				ch <- o_uid
 				is_matched = true
@@ -67,7 +67,7 @@ func (r *subscriptionResolver) SendData(ctx context.Context, to string, data any
 	log.Print("向 ", to, " 发送数据：", data)
 	ch := make(chan *Void, 1)
 	defer close(ch)
-	r.game.Event.Emit("send_data"+to, data)
+	go r.game.Event.Emit("send_data"+to, data)
 	return ch, nil
 }
 
@@ -92,9 +92,10 @@ func (r *subscriptionResolver) ListenAlive(ctx context.Context, uid string) (<-c
 			ch <- nil
 			return
 		}
-		for range r.game.Event.On("leave" + uid) {
+		r.game.Event.On("leave"+uid, func(e *emitter.Event) {
 			ch <- nil
-		}
+		})
+		<-ctx.Done()
 	}()
 	return ch, nil
 }
@@ -105,9 +106,10 @@ func (r *subscriptionResolver) OnlineCount(ctx context.Context) (<-chan int32, e
 	ch <- r.game.OnlineCount()
 	go func() {
 		defer close(ch)
-		for event := range r.game.Event.On("online_changed") {
-			ch <- event.Args[0].(int32)
-		}
+		r.game.Event.On("online_changed", func(e *emitter.Event) {
+			ch <- e.Args[0].(int32)
+		})
+		<-ctx.Done()
 	}()
 	return ch, nil
 }

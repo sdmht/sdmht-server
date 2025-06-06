@@ -24,10 +24,12 @@ type Game struct {
 }
 
 func NewGame() *Game {
-	return &Game{
+	g := &Game{
 		Player:         make(PlayerMap),
 		MatchingPlayer: make(PlayerMap),
 	}
+	g.Event.Use("*", emitter.Void)
+	return g
 }
 
 func (g *Game) OnlineCount() int32 {
@@ -37,7 +39,7 @@ func (g *Game) OnlineCount() int32 {
 func (g *Game) OnlineChanged() {
 	v := g.OnlineCount()
 	log.Print(v, " 在线")
-	g.Event.Emit("online_changed", v)
+	go g.Event.Emit("online_changed", v)
 }
 
 func (g *Game) Join(uid string) {
@@ -50,7 +52,7 @@ func (g *Game) Leave(uid string) {
 	log.Print(uid, " 离开")
 	g.online_uids.Remove(g.online_uids.IndexOf(uid))
 	g.OnlineChanged()
-	g.Event.Emit("leave" + uid)
+	go g.Event.Emit("leave" + uid)
 }
 
 func (g *Game) IsOnline(uid string) bool {
