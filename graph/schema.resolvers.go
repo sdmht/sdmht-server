@@ -86,27 +86,14 @@ func (r *subscriptionResolver) Heartbeat(ctx context.Context, uid string) (<-cha
 // ListenAlive is the resolver for the listenAlive field.
 func (r *subscriptionResolver) ListenAlive(ctx context.Context, uid string) (<-chan *Void, error) {
 	ch := make(chan *Void)
-	leave_ch := make(chan any)
 	go func() {
+		defer close(ch)
 		if !r.game.IsOnline(uid) {
-			leave_ch <- nil
+			ch <- nil
 			return
 		}
 		for range r.game.Event.On("leave" + uid) {
-			leave_ch <- nil
-		}
-	}()
-	go func() {
-		defer close(leave_ch)
-		defer close(ch)
-		for {
-			select {
-			case <-leave_ch:
-				ch <- nil
-				return
-			case <-ctx.Done():
-				return
-			}
+			ch <- nil
 		}
 	}()
 	return ch, nil
