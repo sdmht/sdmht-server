@@ -22,12 +22,6 @@ func (r *subscriptionResolver) MatchOpponent(ctx context.Context, uid string, si
 	log.Print(uid, " 匹配")
 	ch := make(chan any, 10)
 	go func() {
-		r.game.Pmu.Lock()
-		r.game.Player[uid] = game.Player{
-			Size:    size,
-			Version: version,
-		}
-		is_matched := false
 		defer func() {
 			r.game.Pmu.Lock()
 			delete(r.game.MatchingPlayer, uid)
@@ -35,6 +29,12 @@ func (r *subscriptionResolver) MatchOpponent(ctx context.Context, uid string, si
 			r.game.Pmu.Unlock()
 			close(ch)
 		}()
+		r.game.Pmu.Lock()
+		r.game.Player[uid] = game.Player{
+			Size:    size,
+			Version: version,
+		}
+		is_matched := false
 		for o_uid, p := range r.game.MatchingPlayer {
 			if p.Size == size && p.Version == version && o_uid != uid {
 				log.Print(uid, " 匹配到 ", o_uid)
@@ -72,9 +72,9 @@ func (r *subscriptionResolver) SendData(ctx context.Context, to string, data any
 func (r *subscriptionResolver) Heartbeat(ctx context.Context, uid string) (<-chan *Void, error) {
 	ch := make(chan *Void)
 	go func() {
-		r.game.Join(uid)
 		defer r.game.Leave(uid)
 		defer close(ch)
+		r.game.Join(uid)
 		<-ctx.Done()
 	}()
 	return ch, nil
@@ -113,8 +113,8 @@ func (r *subscriptionResolver) OnlineCount(ctx context.Context) (<-chan int32, e
 func (r *subscriptionResolver) Time(ctx context.Context) (<-chan *time.Time, error) {
 	ch := make(chan *time.Time)
 	go func() {
-		ticker := time.NewTicker(1 * time.Second)
 		defer close(ch)
+		ticker := time.NewTicker(1 * time.Second)
 		defer ticker.Stop()
 		now := time.Now()
 		ch <- &now
