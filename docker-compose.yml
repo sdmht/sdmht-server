@@ -12,6 +12,7 @@ services:
     ports:
       - target: 5432
         published: 10002
+        host_ip: 127.0.0.1
   server:
     image: ghcr.io/sdmht/sdmht-server:main
     restart: always
