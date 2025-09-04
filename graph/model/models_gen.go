@@ -2,6 +2,20 @@
 
 package model
 
+type Mutation struct {
+}
+
+type PushSubscription struct {
+	Endpoint       string                `json:"endpoint"`
+	ExpirationTime *float64              `json:"expirationTime,omitempty"`
+	Keys           *PushSubscriptionKeys `json:"keys"`
+}
+
+type PushSubscriptionKeys struct {
+	P256dh string `json:"p256dh"`
+	Auth   string `json:"auth"`
+}
+
 type Query struct {
 }
 

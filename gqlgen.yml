@@ -163,3 +163,6 @@ models:
   Void:
     model:
       - sdmht-server/graph.Void
+  DOMHighResTimeStamp:
+    model:
+      - github.com/99designs/gqlgen/graphql.Float

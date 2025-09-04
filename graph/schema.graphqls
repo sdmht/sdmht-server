@@ -1,9 +1,25 @@
 scalar Time
 scalar Void
 scalar JSON
+scalar DOMHighResTimeStamp
+
+input PushSubscriptionKeys {
+  p256dh: String!
+  auth: String!
+}
+
+input PushSubscription {
+  endpoint: String!
+  expirationTime: DOMHighResTimeStamp
+  keys: PushSubscriptionKeys!
+}
 
 type Query {
   time: Time!
+}
+
+type Mutation {
+  addSubscription(subscription: PushSubscription!): Void
 }
 
 type Subscription {
