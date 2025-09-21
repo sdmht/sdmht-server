@@ -18,7 +18,6 @@ services:
     ports:
       - target: 8000
         published: 10003
-        host_ip: 127.0.0.1
     environment:
       TZ: Asia/Shanghai
       GIN_MODE: release

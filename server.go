@@ -31,7 +31,6 @@ func setupGraphqlService() *handler.Server {
 			CheckOrigin: func(r *http.Request) bool {
 				return true
 			},
-			EnableCompression: false,
 		},
 	})
 
