@@ -74,6 +74,9 @@ func setupRouter(endpoint string) *gin.Engine {
 			srv.ServeHTTP(c.Writer, c.Request)
 		}
 	})
+	router.Any("/api/ws", func(c *gin.Context) {
+		srv.ServeHTTP(c.Writer, c.Request)
+	})
 	router.Use(GinContextToContextMiddleware())
 	return router
 }
