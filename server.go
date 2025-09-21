@@ -43,9 +43,13 @@ func setupGraphqlService() *handler.Server {
 	return srv
 }
 
+type GinContextKeyType string
+
+const GinContextKey GinContextKeyType = "GinContextKey"
+
 func GinContextToContextMiddleware() gin.HandlerFunc {
 	return func(c *gin.Context) {
-		ctx := context.WithValue(c.Request.Context(), "GinContextKey", c)
+		ctx := context.WithValue(c.Request.Context(), GinContextKey, c)
 		c.Request = c.Request.WithContext(ctx)
 		c.Next()
 	}
