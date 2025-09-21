@@ -67,15 +67,11 @@ func setupRouter(endpoint string) *gin.Engine {
 	})
 	srv := setupGraphqlService()
 	router.Any(endpoint, func(c *gin.Context) {
-		accept := c.GetHeader("Accept")
-		if c.Request.Method == "GET" && c.Query("query") == "" && (strings.Contains(accept, "text/html") || strings.Contains(accept, "*/*")) {
+		if c.Request.Method == "GET" && c.Query("query") == "" && strings.Contains(c.GetHeader("Accept"), "text/html") {
 			playground.Handler("GraphQL playground", endpoint, playground.WithGraphiqlEnablePluginExplorer(true)).ServeHTTP(c.Writer, c.Request)
 		} else {
 			srv.ServeHTTP(c.Writer, c.Request)
 		}
-	})
-	router.Any("/api/ws", func(c *gin.Context) {
-		srv.ServeHTTP(c.Writer, c.Request)
 	})
 	router.Use(GinContextToContextMiddleware())
 	return router
