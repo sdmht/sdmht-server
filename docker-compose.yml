@@ -1,4 +1,11 @@
 services:
+  stun:
+    image: coturn/coturn:alpine
+    network_mode: host
+    environment:
+      DETECT_EXTERNAL_IP: "yes"
+      DETECT_RELAY_IP: "yes"
+    command: -vn --listening-port=34078 --log-file=stdout
   db:
     image: postgres:17-alpine
     restart: always
