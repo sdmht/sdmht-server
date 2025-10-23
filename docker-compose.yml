@@ -1,6 +1,7 @@
 services:
   stun:
     image: coturn/coturn:alpine
+    restart: always
     network_mode: host
     environment:
       DETECT_EXTERNAL_IP: "yes"
