@@ -50,7 +50,7 @@ func TestSubscriptionOnlineCount(t *testing.T) {
 	srv := setupGraphqlService()
 	c := client.New(srv)
 	count := 0
-	for i := 0; i < 100; i++ {
+	for range 100 {
 		go func() {
 			sub := c.Websocket("subscription { onlineCount }")
 			var msg map[string]int32
@@ -67,7 +67,7 @@ func TestSubscriptionOnlineCount(t *testing.T) {
 		}()
 	}
 	time.Sleep(100 * time.Millisecond)
-	for i := 0; i < 100; i++ {
+	for i := range 100 {
 		go func() {
 			hb := c.Websocket("subscription heartbeat($uid: String!) { heartbeat(uid: $uid) }", client.Var("uid", i))
 			time.Sleep(1000 * time.Millisecond)
