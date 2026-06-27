@@ -56,7 +56,8 @@ type ComplexityRoot struct {
 	}
 
 	Query struct {
-		Time func(childComplexity int) int
+		CachedResourcePeers func(childComplexity int, uid string, path string) int
+		Time                func(childComplexity int) int
 	}
 
 	Subscription struct {
@@ -75,6 +76,7 @@ type MutationResolver interface {
 }
 type QueryResolver interface {
 	Time(ctx context.Context) (*time.Time, error)
+	CachedResourcePeers(ctx context.Context, uid string, path string) ([]string, error)
 }
 type SubscriptionResolver interface {
 	MatchOpponent(ctx context.Context, uid string, size int32, version string) (<-chan any, error)
@@ -127,6 +129,18 @@ func (e *executableSchema) Complexity(ctx context.Context, typeName, field strin
 		}
 
 		return e.complexity.Mutation.CacheResources(childComplexity, args["uid"].(string), args["paths"].([]string)), true
+
+	case "Query.cachedResourcePeers":
+		if e.complexity.Query.CachedResourcePeers == nil {
+			break
+		}
+
+		args, err := ec.field_Query_cachedResourcePeers_args(ctx, rawArgs)
+		if err != nil {
+			return 0, false
+		}
+
+		return e.complexity.Query.CachedResourcePeers(childComplexity, args["uid"].(string), args["path"].(string)), true
 
 	case "Query.time":
 		if e.complexity.Query.Time == nil {
@@ -375,6 +389,22 @@ func (ec *executionContext) field_Query___type_args(ctx context.Context, rawArgs
 		return nil, err
 	}
 	args["name"] = arg0
+	return args, nil
+}
+
+func (ec *executionContext) field_Query_cachedResourcePeers_args(ctx context.Context, rawArgs map[string]any) (map[string]any, error) {
+	var err error
+	args := map[string]any{}
+	arg0, err := graphql.ProcessArgField(ctx, rawArgs, "uid", ec.unmarshalNString2string)
+	if err != nil {
+		return nil, err
+	}
+	args["uid"] = arg0
+	arg1, err := graphql.ProcessArgField(ctx, rawArgs, "path", ec.unmarshalNString2string)
+	if err != nil {
+		return nil, err
+	}
+	args["path"] = arg1
 	return args, nil
 }
 
@@ -633,6 +663,61 @@ func (ec *executionContext) fieldContext_Query_time(_ context.Context, field gra
 		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
 			return nil, errors.New("field of type Time does not have child fields")
 		},
+	}
+	return fc, nil
+}
+
+func (ec *executionContext) _Query_cachedResourcePeers(ctx context.Context, field graphql.CollectedField) (ret graphql.Marshaler) {
+	fc, err := ec.fieldContext_Query_cachedResourcePeers(ctx, field)
+	if err != nil {
+		return graphql.Null
+	}
+	ctx = graphql.WithFieldContext(ctx, fc)
+	defer func() {
+		if r := recover(); r != nil {
+			ec.Error(ctx, ec.Recover(ctx, r))
+			ret = graphql.Null
+		}
+	}()
+	resTmp, err := ec.ResolverMiddleware(ctx, func(rctx context.Context) (any, error) {
+		ctx = rctx // use context from middleware stack in children
+		return ec.resolvers.Query().CachedResourcePeers(rctx, fc.Args["uid"].(string), fc.Args["path"].(string))
+	})
+	if err != nil {
+		ec.Error(ctx, err)
+		return graphql.Null
+	}
+	if resTmp == nil {
+		if !graphql.HasFieldError(ctx, fc) {
+			ec.Errorf(ctx, "must not be null")
+		}
+		return graphql.Null
+	}
+	res := resTmp.([]string)
+	fc.Result = res
+	return ec.marshalNString2ᚕstringᚄ(ctx, field.Selections, res)
+}
+
+func (ec *executionContext) fieldContext_Query_cachedResourcePeers(ctx context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	fc = &graphql.FieldContext{
+		Object:     "Query",
+		Field:      field,
+		IsMethod:   true,
+		IsResolver: true,
+		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			return nil, errors.New("field of type String does not have child fields")
+		},
+	}
+	defer func() {
+		if r := recover(); r != nil {
+			err = ec.Recover(ctx, r)
+			ec.Error(ctx, err)
+		}
+	}()
+	ctx = graphql.WithFieldContext(ctx, fc)
+	if fc.Args, err = ec.field_Query_cachedResourcePeers_args(ctx, field.ArgumentMap(ec.Variables)); err != nil {
+		ec.Error(ctx, err)
+		return fc, err
 	}
 	return fc, nil
 }
@@ -3270,6 +3355,28 @@ func (ec *executionContext) _Query(ctx context.Context, sel ast.SelectionSet) gr
 					}
 				}()
 				res = ec._Query_time(ctx, field)
+				if res == graphql.Null {
+					atomic.AddUint32(&fs.Invalids, 1)
+				}
+				return res
+			}
+
+			rrm := func(ctx context.Context) graphql.Marshaler {
+				return ec.OperationContext.RootResolverMiddleware(ctx,
+					func(ctx context.Context) graphql.Marshaler { return innerFunc(ctx, out) })
+			}
+
+			out.Concurrently(i, func(ctx context.Context) graphql.Marshaler { return rrm(innerCtx) })
+		case "cachedResourcePeers":
+			field := field
+
+			innerFunc := func(ctx context.Context, fs *graphql.FieldSet) (res graphql.Marshaler) {
+				defer func() {
+					if r := recover(); r != nil {
+						ec.Error(ctx, ec.Recover(ctx, r))
+					}
+				}()
+				res = ec._Query_cachedResourcePeers(ctx, field)
 				if res == graphql.Null {
 					atomic.AddUint32(&fs.Invalids, 1)
 				}

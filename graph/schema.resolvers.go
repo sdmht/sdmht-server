@@ -61,6 +61,23 @@ func (r *queryResolver) Time(ctx context.Context) (*time.Time, error) {
 	return &now, nil
 }
 
+// CachedResourcePeers is the resolver for the cachedResourcePeers field.
+func (r *queryResolver) CachedResourcePeers(ctx context.Context, uid string, path string) ([]string, error) {
+	r.game.Crmu.RLock()
+	defer r.game.Crmu.RUnlock()
+	uids, ok := r.game.CachedResources[path]
+	if !ok {
+		return []string{}, nil
+	}
+	peers := make([]string, 0, len(uids)-1)
+	for u := range uids {
+		if u != uid {
+			peers = append(peers, u)
+		}
+	}
+	return peers, nil
+}
+
 // MatchOpponent is the resolver for the matchOpponent field.
 func (r *subscriptionResolver) MatchOpponent(ctx context.Context, uid string, size int32, version string) (<-chan any, error) {
 	log.Print(uid, " 匹配")

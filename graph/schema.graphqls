@@ -16,6 +16,7 @@ input PushSubscription {
 
 type Query {
   time: Time!
+  cachedResourcePeers(uid: String!, path: String!): [String!]!
 }
 
 type Mutation {
