@@ -1,29 +1,50 @@
+# Time 标量类型，用于表示时间
 scalar Time
+
+# Void 标量类型，用于表示空返回值
 scalar Void
+
+# JSON 标量类型，用于表示任意 JSON 数据
 scalar JSON
+
+# DOMHighResTimeStamp 标量类型，用于表示高精度时间戳
 scalar DOMHighResTimeStamp
 
+# PushSubscriptionKeys 推送订阅密钥输入类型
 input PushSubscriptionKeys {
+  # p256dh 公钥
   p256dh: String!
+  # auth 认证密钥
   auth: String!
 }
 
+# PushSubscription 推送订阅输入类型
 input PushSubscription {
+  # endpoint 推送端点 URL
   endpoint: String!
+  # expirationTime 过期时间戳
   expirationTime: DOMHighResTimeStamp
+  # keys 推送订阅密钥
   keys: PushSubscriptionKeys!
 }
 
+# Query 查询类型
 type Query {
+  # 获取当前时间
   time: Time!
+  # 查询指定资源路径下除自己外的其他在线玩家uid列表
   cachedResourcePeers(uid: String!, path: String!): [String!]!
 }
 
+# Mutation 变更类型
 type Mutation {
+  # 添加或更新推送订阅
   addSubscription(subscription: PushSubscription!): Void
+  # 发布或更新玩家拥有的缓存资源路径列表
   cachedResources(uid: String!, paths: [String!]!): Void
 }
 
+# Subscription 订阅类型
 type Subscription {
   # 玩家1开始匹配，然后等待中，当玩家2也开始匹配时，并且size和version都相同时，匹配成功，然后创建房间，玩家2返回空字符串表示后手连接方，然后双方玩家收到对方的uid，最后转为监听，当玩家使用sendData接口发送数据时，从此接口返回数据。
   matchOpponent(uid: String!, size: Int! = 4, version: String! = ""): JSON!
@@ -39,5 +60,6 @@ type Subscription {
   listenAlive(uid: String!): Void
   # 返回在线玩家数量，而非匹配玩家数量，实时更新，在客户端首次发起以及后续每次变更时返回。
   onlineCount: Int!
+  # 实时时间订阅，每秒返回当前时间
   time: Time!
 }
