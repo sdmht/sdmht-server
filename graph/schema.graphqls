@@ -21,7 +21,7 @@ type Query {
 
 type Mutation {
   addSubscription(subscription: PushSubscription!): Void
-  cacheResources(uid: String!, paths: [String!]!): Void
+  cachedResources(uid: String!, paths: [String!]!): Void
 }
 
 type Subscription {

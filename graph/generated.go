@@ -41,7 +41,7 @@ type DirectiveRoot struct {
 type ComplexityRoot struct {
 	Mutation struct {
 		AddSubscription func(childComplexity int, subscription model.PushSubscription) int
-		CacheResources  func(childComplexity int, uid string, paths []string) int
+		CachedResources func(childComplexity int, uid string, paths []string) int
 	}
 
 	Query struct {
@@ -65,7 +65,7 @@ type ComplexityRoot struct {
 
 type MutationResolver interface {
 	AddSubscription(ctx context.Context, subscription model.PushSubscription) (*Void, error)
-	CacheResources(ctx context.Context, uid string, paths []string) (*Void, error)
+	CachedResources(ctx context.Context, uid string, paths []string) (*Void, error)
 }
 type QueryResolver interface {
 	Time(ctx context.Context) (*time.Time, error)
@@ -109,17 +109,17 @@ func (e *executableSchema) Complexity(ctx context.Context, typeName, field strin
 		}
 
 		return e.ComplexityRoot.Mutation.AddSubscription(childComplexity, args["subscription"].(model.PushSubscription)), true
-	case "Mutation.cacheResources":
-		if e.ComplexityRoot.Mutation.CacheResources == nil {
+	case "Mutation.cachedResources":
+		if e.ComplexityRoot.Mutation.CachedResources == nil {
 			break
 		}
 
-		args, err := ec.field_Mutation_cacheResources_args(ctx, rawArgs)
+		args, err := ec.field_Mutation_cachedResources_args(ctx, rawArgs)
 		if err != nil {
 			return 0, false
 		}
 
-		return e.ComplexityRoot.Mutation.CacheResources(childComplexity, args["uid"].(string), args["paths"].([]string)), true
+		return e.ComplexityRoot.Mutation.CachedResources(childComplexity, args["uid"].(string), args["paths"].([]string)), true
 
 	case "Query.cachedResourcePeers":
 		if e.ComplexityRoot.Query.CachedResourcePeers == nil {
@@ -448,7 +448,7 @@ func (ec *executionContext) field_Mutation_addSubscription_args(ctx context.Cont
 	return args, nil
 }
 
-func (ec *executionContext) field_Mutation_cacheResources_args(ctx context.Context, rawArgs map[string]any) (map[string]any, error) {
+func (ec *executionContext) field_Mutation_cachedResources_args(ctx context.Context, rawArgs map[string]any) (map[string]any, error) {
 	var err error
 	args := map[string]any{}
 	arg0, err := graphql.ProcessArgField(ctx, rawArgs, "uid",
@@ -690,17 +690,17 @@ func (ec *executionContext) fieldContext_Mutation_addSubscription(ctx context.Co
 	return fc, nil
 }
 
-func (ec *executionContext) _Mutation_cacheResources(ctx context.Context, field graphql.CollectedField) (ret graphql.Marshaler) {
+func (ec *executionContext) _Mutation_cachedResources(ctx context.Context, field graphql.CollectedField) (ret graphql.Marshaler) {
 	return graphql.ResolveField(
 		ctx,
 		ec.OperationContext,
 		field,
 		func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
-			return ec.fieldContext_Mutation_cacheResources(ctx, field)
+			return ec.fieldContext_Mutation_cachedResources(ctx, field)
 		},
 		func(ctx context.Context) (any, error) {
 			fc := graphql.GetFieldContext(ctx)
-			return ec.Resolvers.Mutation().CacheResources(ctx, fc.Args["uid"].(string), fc.Args["paths"].([]string))
+			return ec.Resolvers.Mutation().CachedResources(ctx, fc.Args["uid"].(string), fc.Args["paths"].([]string))
 		},
 		nil,
 		func(ctx context.Context, selections ast.SelectionSet, v *Void) graphql.Marshaler {
@@ -710,7 +710,7 @@ func (ec *executionContext) _Mutation_cacheResources(ctx context.Context, field 
 		false,
 	)
 }
-func (ec *executionContext) fieldContext_Mutation_cacheResources(ctx context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+func (ec *executionContext) fieldContext_Mutation_cachedResources(ctx context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
 	fc = &graphql.FieldContext{
 		Object:     "Mutation",
 		Field:      field,
@@ -727,7 +727,7 @@ func (ec *executionContext) fieldContext_Mutation_cacheResources(ctx context.Con
 		}
 	}()
 	ctx = graphql.WithFieldContext(ctx, fc)
-	if fc.Args, err = ec.field_Mutation_cacheResources_args(ctx, field.ArgumentMap(ec.Variables)); err != nil {
+	if fc.Args, err = ec.field_Mutation_cachedResources_args(ctx, field.ArgumentMap(ec.Variables)); err != nil {
 		ec.Error(ctx, err)
 		return fc, err
 	}
@@ -2280,9 +2280,9 @@ func (ec *executionContext) _Mutation(ctx context.Context, sel ast.SelectionSet)
 			if out.Values[i] == graphql.RequiredNull {
 				out.Invalids++
 			}
-		case "cacheResources":
+		case "cachedResources":
 			out.Values[i] = ec.OperationContext.RootResolverMiddleware(innerCtx, func(ctx context.Context) (res graphql.Marshaler) {
-				return ec._Mutation_cacheResources(ctx, field)
+				return ec._Mutation_cachedResources(ctx, field)
 			})
 			if out.Values[i] == graphql.RequiredNull {
 				out.Invalids++

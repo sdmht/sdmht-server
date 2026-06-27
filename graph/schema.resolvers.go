@@ -43,8 +43,8 @@ func (r *mutationResolver) AddSubscription(ctx context.Context, subscription mod
 	return nil, nil
 }
 
-// CacheResources is the resolver for the cacheResources field.
-func (r *mutationResolver) CacheResources(ctx context.Context, uid string, paths []string) (*Void, error) {
+// CachedResources is the resolver for the cachedResources field.
+func (r *mutationResolver) CachedResources(ctx context.Context, uid string, paths []string) (*Void, error) {
 	r.game.Crmu.Lock()
 	defer r.game.Crmu.Unlock()
 	for _, path := range paths {
