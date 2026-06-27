@@ -63,7 +63,7 @@ func (g *Game) IsOnline(uid string) bool {
 	return g.online_uids.Contains(uid)
 }
 
-func (g *Game) AddCachedResources(uid string, paths []string) {
+func (g *Game) PublishCachedResources(uid string, paths []string) {
 	g.crmu.Lock()
 	defer g.crmu.Unlock()
 	for _, path := range paths {

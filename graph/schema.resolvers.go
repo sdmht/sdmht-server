@@ -43,12 +43,6 @@ func (r *mutationResolver) AddSubscription(ctx context.Context, subscription mod
 	return nil, nil
 }
 
-// CachedResources is the resolver for the cachedResources field.
-func (r *mutationResolver) CachedResources(ctx context.Context, uid string, paths []string) (*Void, error) {
-	r.game.AddCachedResources(uid, paths)
-	return nil, nil
-}
-
 // Time is the resolver for the time field.
 func (r *queryResolver) Time(ctx context.Context) (*time.Time, error) {
 	now := time.Now()
@@ -111,6 +105,15 @@ func (r *subscriptionResolver) SendData(ctx context.Context, to string, data any
 	ch := make(chan *Void, 1)
 	defer close(ch)
 	go r.game.Event.Emit("send_data:"+to, data)
+	return ch, nil
+}
+
+// PublishCachedResources is the resolver for the publishCachedResources field.
+func (r *subscriptionResolver) PublishCachedResources(ctx context.Context, uid string, paths []string) (<-chan *Void, error) {
+	log.Print(uid, " 发布缓存资源路径：", paths)
+	ch := make(chan *Void, 1)
+	defer close(ch)
+	r.game.PublishCachedResources(uid, paths)
 	return ch, nil
 }
 

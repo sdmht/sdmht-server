@@ -40,8 +40,6 @@ type Query {
 type Mutation {
   # 添加或更新推送订阅
   addSubscription(subscription: PushSubscription!): Void
-  # 发布或更新玩家拥有的缓存资源路径列表
-  cachedResources(uid: String!, paths: [String!]!): Void
 }
 
 # Subscription 订阅类型
@@ -50,6 +48,8 @@ type Subscription {
   matchOpponent(uid: String!, size: Int! = 4, version: String! = ""): JSON!
   # 发送数据，to为对方的uid，data为发送的数据，无需返回值。
   sendData(to: String!, data: JSON!): Void
+  # 发布玩家已经缓存的资源路径列表
+  publishCachedResources(uid: String!, paths: [String!]!): Void
   # 订阅信令接收，输入参数只有uid，持续监听其他人发来的信令，不关闭。
   listenSignaling(uid: String!): JSON!
   # 发送信令，uid为发送者的uid，to为对方的uid，data为发送的信令数据，无需返回值。

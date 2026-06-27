@@ -41,7 +41,6 @@ type DirectiveRoot struct {
 type ComplexityRoot struct {
 	Mutation struct {
 		AddSubscription func(childComplexity int, subscription model.PushSubscription) int
-		CachedResources func(childComplexity int, uid string, paths []string) int
 	}
 
 	Query struct {
@@ -50,14 +49,15 @@ type ComplexityRoot struct {
 	}
 
 	Subscription struct {
-		Heartbeat       func(childComplexity int, uid string) int
-		ListenAlive     func(childComplexity int, uid string) int
-		ListenSignaling func(childComplexity int, uid string) int
-		MatchOpponent   func(childComplexity int, uid string, size int32, version string) int
-		OnlineCount     func(childComplexity int) int
-		SendData        func(childComplexity int, to string, data any) int
-		SendSignaling   func(childComplexity int, uid string, to string, data any) int
-		Time            func(childComplexity int) int
+		Heartbeat              func(childComplexity int, uid string) int
+		ListenAlive            func(childComplexity int, uid string) int
+		ListenSignaling        func(childComplexity int, uid string) int
+		MatchOpponent          func(childComplexity int, uid string, size int32, version string) int
+		OnlineCount            func(childComplexity int) int
+		PublishCachedResources func(childComplexity int, uid string, paths []string) int
+		SendData               func(childComplexity int, to string, data any) int
+		SendSignaling          func(childComplexity int, uid string, to string, data any) int
+		Time                   func(childComplexity int) int
 	}
 }
 
@@ -67,7 +67,6 @@ type ComplexityRoot struct {
 
 type MutationResolver interface {
 	AddSubscription(ctx context.Context, subscription model.PushSubscription) (*Void, error)
-	CachedResources(ctx context.Context, uid string, paths []string) (*Void, error)
 }
 type QueryResolver interface {
 	Time(ctx context.Context) (*time.Time, error)
@@ -76,6 +75,7 @@ type QueryResolver interface {
 type SubscriptionResolver interface {
 	MatchOpponent(ctx context.Context, uid string, size int32, version string) (<-chan any, error)
 	SendData(ctx context.Context, to string, data any) (<-chan *Void, error)
+	PublishCachedResources(ctx context.Context, uid string, paths []string) (<-chan *Void, error)
 	ListenSignaling(ctx context.Context, uid string) (<-chan any, error)
 	SendSignaling(ctx context.Context, uid string, to string, data any) (<-chan *Void, error)
 	Heartbeat(ctx context.Context, uid string) (<-chan *Void, error)
@@ -113,17 +113,6 @@ func (e *executableSchema) Complexity(ctx context.Context, typeName, field strin
 		}
 
 		return e.ComplexityRoot.Mutation.AddSubscription(childComplexity, args["subscription"].(model.PushSubscription)), true
-	case "Mutation.cachedResources":
-		if e.ComplexityRoot.Mutation.CachedResources == nil {
-			break
-		}
-
-		args, err := ec.field_Mutation_cachedResources_args(ctx, rawArgs)
-		if err != nil {
-			return 0, false
-		}
-
-		return e.ComplexityRoot.Mutation.CachedResources(childComplexity, args["uid"].(string), args["paths"].([]string)), true
 
 	case "Query.cachedResourcePeers":
 		if e.ComplexityRoot.Query.CachedResourcePeers == nil {
@@ -194,6 +183,17 @@ func (e *executableSchema) Complexity(ctx context.Context, typeName, field strin
 		}
 
 		return e.ComplexityRoot.Subscription.OnlineCount(childComplexity), true
+	case "Subscription.publishCachedResources":
+		if e.ComplexityRoot.Subscription.PublishCachedResources == nil {
+			break
+		}
+
+		args, err := ec.field_Subscription_publishCachedResources_args(ctx, rawArgs)
+		if err != nil {
+			return 0, false
+		}
+
+		return e.ComplexityRoot.Subscription.PublishCachedResources(childComplexity, args["uid"].(string), args["paths"].([]string)), true
 	case "Subscription.sendData":
 		if e.ComplexityRoot.Subscription.SendData == nil {
 			break
@@ -474,28 +474,6 @@ func (ec *executionContext) field_Mutation_addSubscription_args(ctx context.Cont
 	return args, nil
 }
 
-func (ec *executionContext) field_Mutation_cachedResources_args(ctx context.Context, rawArgs map[string]any) (map[string]any, error) {
-	var err error
-	args := map[string]any{}
-	arg0, err := graphql.ProcessArgField(ctx, rawArgs, "uid",
-		func(ctx context.Context, v any) (string, error) {
-			return ec.unmarshalNString2string(ctx, v)
-		})
-	if err != nil {
-		return nil, err
-	}
-	args["uid"] = arg0
-	arg1, err := graphql.ProcessArgField(ctx, rawArgs, "paths",
-		func(ctx context.Context, v any) ([]string, error) {
-			return ec.unmarshalNString2ᚕstringᚄ(ctx, v)
-		})
-	if err != nil {
-		return nil, err
-	}
-	args["paths"] = arg1
-	return args, nil
-}
-
 func (ec *executionContext) field_Query___type_args(ctx context.Context, rawArgs map[string]any) (map[string]any, error) {
 	var err error
 	args := map[string]any{}
@@ -601,6 +579,28 @@ func (ec *executionContext) field_Subscription_matchOpponent_args(ctx context.Co
 		return nil, err
 	}
 	args["version"] = arg2
+	return args, nil
+}
+
+func (ec *executionContext) field_Subscription_publishCachedResources_args(ctx context.Context, rawArgs map[string]any) (map[string]any, error) {
+	var err error
+	args := map[string]any{}
+	arg0, err := graphql.ProcessArgField(ctx, rawArgs, "uid",
+		func(ctx context.Context, v any) (string, error) {
+			return ec.unmarshalNString2string(ctx, v)
+		})
+	if err != nil {
+		return nil, err
+	}
+	args["uid"] = arg0
+	arg1, err := graphql.ProcessArgField(ctx, rawArgs, "paths",
+		func(ctx context.Context, v any) ([]string, error) {
+			return ec.unmarshalNString2ᚕstringᚄ(ctx, v)
+		})
+	if err != nil {
+		return nil, err
+	}
+	args["paths"] = arg1
 	return args, nil
 }
 
@@ -754,50 +754,6 @@ func (ec *executionContext) fieldContext_Mutation_addSubscription(ctx context.Co
 	}()
 	ctx = graphql.WithFieldContext(ctx, fc)
 	if fc.Args, err = ec.field_Mutation_addSubscription_args(ctx, field.ArgumentMap(ec.Variables)); err != nil {
-		ec.Error(ctx, err)
-		return fc, err
-	}
-	return fc, nil
-}
-
-func (ec *executionContext) _Mutation_cachedResources(ctx context.Context, field graphql.CollectedField) (ret graphql.Marshaler) {
-	return graphql.ResolveField(
-		ctx,
-		ec.OperationContext,
-		field,
-		func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
-			return ec.fieldContext_Mutation_cachedResources(ctx, field)
-		},
-		func(ctx context.Context) (any, error) {
-			fc := graphql.GetFieldContext(ctx)
-			return ec.Resolvers.Mutation().CachedResources(ctx, fc.Args["uid"].(string), fc.Args["paths"].([]string))
-		},
-		nil,
-		func(ctx context.Context, selections ast.SelectionSet, v *Void) graphql.Marshaler {
-			return ec.marshalOVoid2ᚖsdmhtᚑserverᚋgraphᚐVoid(ctx, selections, v)
-		},
-		true,
-		false,
-	)
-}
-func (ec *executionContext) fieldContext_Mutation_cachedResources(ctx context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
-	fc = &graphql.FieldContext{
-		Object:     "Mutation",
-		Field:      field,
-		IsMethod:   true,
-		IsResolver: true,
-		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
-			return nil, errors.New("field of type Void does not have child fields")
-		},
-	}
-	defer func() {
-		if r := recover(); r != nil {
-			err = ec.Recover(ctx, r)
-			ec.Error(ctx, err)
-		}
-	}()
-	ctx = graphql.WithFieldContext(ctx, fc)
-	if fc.Args, err = ec.field_Mutation_cachedResources_args(ctx, field.ArgumentMap(ec.Variables)); err != nil {
 		ec.Error(ctx, err)
 		return fc, err
 	}
@@ -1035,6 +991,50 @@ func (ec *executionContext) fieldContext_Subscription_sendData(ctx context.Conte
 	}()
 	ctx = graphql.WithFieldContext(ctx, fc)
 	if fc.Args, err = ec.field_Subscription_sendData_args(ctx, field.ArgumentMap(ec.Variables)); err != nil {
+		ec.Error(ctx, err)
+		return fc, err
+	}
+	return fc, nil
+}
+
+func (ec *executionContext) _Subscription_publishCachedResources(ctx context.Context, field graphql.CollectedField) (ret func(ctx context.Context) graphql.Marshaler) {
+	return graphql.ResolveFieldStream(
+		ctx,
+		ec.OperationContext,
+		field,
+		func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			return ec.fieldContext_Subscription_publishCachedResources(ctx, field)
+		},
+		func(ctx context.Context) (any, error) {
+			fc := graphql.GetFieldContext(ctx)
+			return ec.Resolvers.Subscription().PublishCachedResources(ctx, fc.Args["uid"].(string), fc.Args["paths"].([]string))
+		},
+		nil,
+		func(ctx context.Context, selections ast.SelectionSet, v *Void) graphql.Marshaler {
+			return ec.marshalOVoid2ᚖsdmhtᚑserverᚋgraphᚐVoid(ctx, selections, v)
+		},
+		true,
+		false,
+	)
+}
+func (ec *executionContext) fieldContext_Subscription_publishCachedResources(ctx context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	fc = &graphql.FieldContext{
+		Object:     "Subscription",
+		Field:      field,
+		IsMethod:   true,
+		IsResolver: true,
+		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			return nil, errors.New("field of type Void does not have child fields")
+		},
+	}
+	defer func() {
+		if r := recover(); r != nil {
+			err = ec.Recover(ctx, r)
+			ec.Error(ctx, err)
+		}
+	}()
+	ctx = graphql.WithFieldContext(ctx, fc)
+	if fc.Args, err = ec.field_Subscription_publishCachedResources_args(ctx, field.ArgumentMap(ec.Variables)); err != nil {
 		ec.Error(ctx, err)
 		return fc, err
 	}
@@ -2444,13 +2444,6 @@ func (ec *executionContext) _Mutation(ctx context.Context, sel ast.SelectionSet)
 			if out.Values[i] == graphql.RequiredNull {
 				out.Invalids++
 			}
-		case "cachedResources":
-			out.Values[i] = ec.OperationContext.RootResolverMiddleware(innerCtx, func(ctx context.Context) (res graphql.Marshaler) {
-				return ec._Mutation_cachedResources(ctx, field)
-			})
-			if out.Values[i] == graphql.RequiredNull {
-				out.Invalids++
-			}
 		default:
 			panic("unknown field " + strconv.Quote(field.Name))
 		}
@@ -2588,6 +2581,8 @@ func (ec *executionContext) _Subscription(ctx context.Context, sel ast.Selection
 		return ec._Subscription_matchOpponent(ctx, fields[0])
 	case "sendData":
 		return ec._Subscription_sendData(ctx, fields[0])
+	case "publishCachedResources":
+		return ec._Subscription_publishCachedResources(ctx, fields[0])
 	case "listenSignaling":
 		return ec._Subscription_listenSignaling(ctx, fields[0])
 	case "sendSignaling":
