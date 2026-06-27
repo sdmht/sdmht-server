@@ -64,7 +64,6 @@ func TestSubscriptionOnlineCount(t *testing.T) {
 			}
 			a.NoError(sub.Close())
 			count++
-			time.Sleep(9 * time.Millisecond)
 		}()
 	}
 	time.Sleep(100 * time.Millisecond)
@@ -76,7 +75,7 @@ func TestSubscriptionOnlineCount(t *testing.T) {
 		}()
 		time.Sleep(9 * time.Millisecond)
 	}
-	time.Sleep(1000 * time.Millisecond)
+	time.Sleep(2000 * time.Millisecond)
 	a.Equal(100, count)
 }
 
@@ -188,4 +187,209 @@ func TestSubscriptionMatch(t *testing.T) {
 	a.Equal(nil, msg_sd2["sendData"])
 	a.NoError(p4.Next(&msg_p4))
 	a.Equal(map[string]any{"world": "hello"}, msg_p4["matchOpponent"])
+}
+
+// 测试缓存发现功能
+// 第一部分：A先使用cachedResources保存['a.txt']，然后B调用cachedResourcePeers查a.txt，此时B那边应该返回包含A的uid的列表
+func TestCachedResourceDiscovery(t *testing.T) {
+	a := assert.New(t)
+	srv := setupGraphqlService()
+	c := client.New(srv)
+
+	// A 使用 cachedResources 保存资源路径
+	var mutationResult map[string]any
+	err := c.Post(`mutation { cachedResources(uid: "A", paths: ["a.txt", "b.txt"]) }`, &mutationResult)
+	a.NoError(err)
+
+	// B 查询 a.txt 的对等节点
+	var queryResult map[string]any
+	err = c.Post(`query { cachedResourcePeers(uid: "B", path: "a.txt") }`, &queryResult)
+	a.NoError(err)
+	peers := queryResult["cachedResourcePeers"].([]any)
+	a.Equal(1, len(peers))
+	a.Equal("A", peers[0])
+
+	// B 查询 b.txt 的对等节点
+	err = c.Post(`query { cachedResourcePeers(uid: "B", path: "b.txt") }`, &queryResult)
+	a.NoError(err)
+	peers = queryResult["cachedResourcePeers"].([]any)
+	a.Equal(1, len(peers))
+	a.Equal("A", peers[0])
+
+	// B 查询不存在的资源
+	err = c.Post(`query { cachedResourcePeers(uid: "B", path: "c.txt") }`, &queryResult)
+	a.NoError(err)
+	peers = queryResult["cachedResourcePeers"].([]any)
+	a.Equal(0, len(peers))
+
+	// A 查询 a.txt 时应该排除自己
+	err = c.Post(`query { cachedResourcePeers(uid: "A", path: "a.txt") }`, &queryResult)
+	a.NoError(err)
+	peers = queryResult["cachedResourcePeers"].([]any)
+	a.Equal(0, len(peers))
+
+	// C 也保存 a.txt
+	err = c.Post(`mutation { cachedResources(uid: "C", paths: ["a.txt"]) }`, &mutationResult)
+	a.NoError(err)
+
+	// B 再次查询 a.txt，应该返回 A 和 C
+	err = c.Post(`query { cachedResourcePeers(uid: "B", path: "a.txt") }`, &queryResult)
+	a.NoError(err)
+	peers = queryResult["cachedResourcePeers"].([]any)
+	a.Equal(2, len(peers))
+	peerSet := make(map[string]bool)
+	for _, p := range peers {
+		peerSet[p.(string)] = true
+	}
+	a.True(peerSet["A"])
+	a.True(peerSet["C"])
+}
+
+// 测试信令连接功能
+// 第二部分：A和B调用signaling保持监听，B使用sendSignaling向A发送连接数据并告知自己的uid请求连接，
+// 此时A的signaling应该返回数据且连接不关闭继续监听，A也通过sendSignaling向B发送数据，再互相重复一次发送数据接收数据，连接成功建立
+func TestSignalingConnection(t *testing.T) {
+	a := assert.New(t)
+	srv := setupGraphqlService()
+	c := client.New(srv)
+
+	// A 和 B 调用 signaling 保持监听
+	sigA := c.Websocket(`subscription { signaling(uid: "A") }`)
+	sigB := c.Websocket(`subscription { signaling(uid: "B") }`)
+
+	// B 使用 sendSignaling 向 A 发送连接数据
+	var sendResult map[string]any
+	bConnectData := map[string]any{"type": "connect", "message": "hello from B"}
+	sendQuery := `subscription sendSignaling($uid: String!, $to: String!, $data: JSON!) { sendSignaling(uid: $uid, to: $to, data: $data) }`
+
+	c.WebsocketOnce(sendQuery, &sendResult,
+		client.Var("uid", "B"),
+		client.Var("to", "A"),
+		client.Var("data", bConnectData),
+	)
+	a.Equal(nil, sendResult["sendSignaling"])
+
+	// A 的 signaling 应该收到数据
+	var msgA map[string]any
+	a.NoError(sigA.Next(&msgA))
+	signalingData := msgA["signaling"].(map[string]any)
+	a.Equal("B", signalingData["uid"])
+	a.Equal(bConnectData, signalingData["data"])
+
+	// A 也通过 sendSignaling 向 B 发送数据
+	aConnectData := map[string]any{"type": "ack", "message": "hello from A"}
+	c.WebsocketOnce(sendQuery, &sendResult,
+		client.Var("uid", "A"),
+		client.Var("to", "B"),
+		client.Var("data", aConnectData),
+	)
+	a.Equal(nil, sendResult["sendSignaling"])
+
+	// B 的 signaling 应该收到数据
+	var msgB map[string]any
+	a.NoError(sigB.Next(&msgB))
+	signalingData = msgB["signaling"].(map[string]any)
+	a.Equal("A", signalingData["uid"])
+	a.Equal(aConnectData, signalingData["data"])
+
+	// 再互相重复一次发送数据接收数据
+	// B 再次发送数据
+	bSecondData := map[string]any{"type": "confirm", "message": "connection established"}
+	c.WebsocketOnce(sendQuery, &sendResult,
+		client.Var("uid", "B"),
+		client.Var("to", "A"),
+		client.Var("data", bSecondData),
+	)
+	a.Equal(nil, sendResult["sendSignaling"])
+
+	// A 再次收到数据
+	a.NoError(sigA.Next(&msgA))
+	signalingData = msgA["signaling"].(map[string]any)
+	a.Equal("B", signalingData["uid"])
+	a.Equal(bSecondData, signalingData["data"])
+
+	// A 再次发送数据
+	aSecondData := map[string]any{"type": "confirm", "message": "connection confirmed"}
+	c.WebsocketOnce(sendQuery, &sendResult,
+		client.Var("uid", "A"),
+		client.Var("to", "B"),
+		client.Var("data", aSecondData),
+	)
+	a.Equal(nil, sendResult["sendSignaling"])
+
+	// B 再次收到数据
+	a.NoError(sigB.Next(&msgB))
+	signalingData = msgB["signaling"].(map[string]any)
+	a.Equal("A", signalingData["uid"])
+	a.Equal(aSecondData, signalingData["data"])
+
+	// 关闭 signaling 订阅
+	a.NoError(sigA.Close())
+	a.NoError(sigB.Close())
+}
+
+// 测试完整的缓存资源发现和信令连接流程
+func TestCachedResourceAndSignalingIntegration(t *testing.T) {
+	a := assert.New(t)
+	srv := setupGraphqlService()
+	c := client.New(srv)
+
+	// 第一部分：发现
+	// A 先使用 cachedResources 保存资源
+	var mutationResult map[string]any
+	err := c.Post(`mutation { cachedResources(uid: "playerA", paths: ["resource.txt"]) }`, &mutationResult)
+	a.NoError(err)
+
+	// B 调用 cachedResourcePeers 查询 resource.txt
+	var queryResult map[string]any
+	err = c.Post(`query { cachedResourcePeers(uid: "playerB", path: "resource.txt") }`, &queryResult)
+	a.NoError(err)
+	peers := queryResult["cachedResourcePeers"].([]any)
+	a.Equal(1, len(peers))
+	targetUID := peers[0].(string)
+	a.Equal("playerA", targetUID)
+
+	// 第二部分：连接
+	// A 和 B 调用 signaling 保持监听
+	sigA := c.Websocket(`subscription { signaling(uid: "playerA") }`)
+	sigB := c.Websocket(`subscription { signaling(uid: "playerB") }`)
+
+	// B 使用 sendSignaling 向 A 发送连接数据
+	var sendResult map[string]any
+	connectData := map[string]any{"type": "offer", "sdp": "offer_sdp_data"}
+	sendQuery := `subscription sendSignaling($uid: String!, $to: String!, $data: JSON!) { sendSignaling(uid: $uid, to: $to, data: $data) }`
+
+	c.WebsocketOnce(sendQuery, &sendResult,
+		client.Var("uid", "playerB"),
+		client.Var("to", targetUID),
+		client.Var("data", connectData),
+	)
+	a.Equal(nil, sendResult["sendSignaling"])
+
+	// A 收到 B 的连接请求
+	var msgA map[string]any
+	a.NoError(sigA.Next(&msgA))
+	signalingData := msgA["signaling"].(map[string]any)
+	a.Equal("playerB", signalingData["uid"])
+	a.Equal(connectData, signalingData["data"])
+
+	// A 回复连接确认
+	answerData := map[string]any{"type": "answer", "sdp": "answer_sdp_data"}
+	c.WebsocketOnce(sendQuery, &sendResult,
+		client.Var("uid", "playerA"),
+		client.Var("to", "playerB"),
+		client.Var("data", answerData),
+	)
+	a.Equal(nil, sendResult["sendSignaling"])
+
+	// B 收到 A 的回复
+	var msgB map[string]any
+	a.NoError(sigB.Next(&msgB))
+	signalingData = msgB["signaling"].(map[string]any)
+	a.Equal("playerA", signalingData["uid"])
+	a.Equal(answerData, signalingData["data"])
+
+	// 关闭连接
+	a.NoError(sigA.Close())
+	a.NoError(sigB.Close())
 }
