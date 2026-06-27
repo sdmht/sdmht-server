@@ -44,11 +44,11 @@ type ComplexityRoot struct {
 	}
 
 	Query struct {
-		CachedResourcePeers func(childComplexity int, uid string, path string) int
-		Time                func(childComplexity int) int
+		Time func(childComplexity int) int
 	}
 
 	Subscription struct {
+		CachedResourcePeers    func(childComplexity int, path string) int
 		Heartbeat              func(childComplexity int, uid string) int
 		ListenAlive            func(childComplexity int, uid string) int
 		ListenSignaling        func(childComplexity int, uid string) int
@@ -70,12 +70,12 @@ type MutationResolver interface {
 }
 type QueryResolver interface {
 	Time(ctx context.Context) (*time.Time, error)
-	CachedResourcePeers(ctx context.Context, uid string, path string) ([]string, error)
 }
 type SubscriptionResolver interface {
 	MatchOpponent(ctx context.Context, uid string, size int32, version string) (<-chan any, error)
 	SendData(ctx context.Context, to string, data any) (<-chan *Void, error)
 	PublishCachedResources(ctx context.Context, uid string, paths []string) (<-chan *Void, error)
+	CachedResourcePeers(ctx context.Context, path string) (<-chan []string, error)
 	ListenSignaling(ctx context.Context, uid string) (<-chan any, error)
 	SendSignaling(ctx context.Context, uid string, to string, data any) (<-chan *Void, error)
 	Heartbeat(ctx context.Context, uid string) (<-chan *Void, error)
@@ -114,18 +114,6 @@ func (e *executableSchema) Complexity(ctx context.Context, typeName, field strin
 
 		return e.ComplexityRoot.Mutation.AddSubscription(childComplexity, args["subscription"].(model.PushSubscription)), true
 
-	case "Query.cachedResourcePeers":
-		if e.ComplexityRoot.Query.CachedResourcePeers == nil {
-			break
-		}
-
-		args, err := ec.field_Query_cachedResourcePeers_args(ctx, rawArgs)
-		if err != nil {
-			return 0, false
-		}
-
-		return e.ComplexityRoot.Query.CachedResourcePeers(childComplexity, args["uid"].(string), args["path"].(string)), true
-
 	case "Query.time":
 		if e.ComplexityRoot.Query.Time == nil {
 			break
@@ -133,6 +121,17 @@ func (e *executableSchema) Complexity(ctx context.Context, typeName, field strin
 
 		return e.ComplexityRoot.Query.Time(childComplexity), true
 
+	case "Subscription.cachedResourcePeers":
+		if e.ComplexityRoot.Subscription.CachedResourcePeers == nil {
+			break
+		}
+
+		args, err := ec.field_Subscription_cachedResourcePeers_args(ctx, rawArgs)
+		if err != nil {
+			return 0, false
+		}
+
+		return e.ComplexityRoot.Subscription.CachedResourcePeers(childComplexity, args["path"].(string)), true
 	case "Subscription.heartbeat":
 		if e.ComplexityRoot.Subscription.Heartbeat == nil {
 			break
@@ -488,25 +487,17 @@ func (ec *executionContext) field_Query___type_args(ctx context.Context, rawArgs
 	return args, nil
 }
 
-func (ec *executionContext) field_Query_cachedResourcePeers_args(ctx context.Context, rawArgs map[string]any) (map[string]any, error) {
+func (ec *executionContext) field_Subscription_cachedResourcePeers_args(ctx context.Context, rawArgs map[string]any) (map[string]any, error) {
 	var err error
 	args := map[string]any{}
-	arg0, err := graphql.ProcessArgField(ctx, rawArgs, "uid",
+	arg0, err := graphql.ProcessArgField(ctx, rawArgs, "path",
 		func(ctx context.Context, v any) (string, error) {
 			return ec.unmarshalNString2string(ctx, v)
 		})
 	if err != nil {
 		return nil, err
 	}
-	args["uid"] = arg0
-	arg1, err := graphql.ProcessArgField(ctx, rawArgs, "path",
-		func(ctx context.Context, v any) (string, error) {
-			return ec.unmarshalNString2string(ctx, v)
-		})
-	if err != nil {
-		return nil, err
-	}
-	args["path"] = arg1
+	args["path"] = arg0
 	return args, nil
 }
 
@@ -783,50 +774,6 @@ func (ec *executionContext) fieldContext_Query_time(_ context.Context, field gra
 	return graphql.NewScalarFieldContext("Query", field, true, true, errors.New("field of type Time does not have child fields"))
 }
 
-func (ec *executionContext) _Query_cachedResourcePeers(ctx context.Context, field graphql.CollectedField) (ret graphql.Marshaler) {
-	return graphql.ResolveField(
-		ctx,
-		ec.OperationContext,
-		field,
-		func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
-			return ec.fieldContext_Query_cachedResourcePeers(ctx, field)
-		},
-		func(ctx context.Context) (any, error) {
-			fc := graphql.GetFieldContext(ctx)
-			return ec.Resolvers.Query().CachedResourcePeers(ctx, fc.Args["uid"].(string), fc.Args["path"].(string))
-		},
-		nil,
-		func(ctx context.Context, selections ast.SelectionSet, v []string) graphql.Marshaler {
-			return ec.marshalNString2ᚕstringᚄ(ctx, selections, v)
-		},
-		true,
-		true,
-	)
-}
-func (ec *executionContext) fieldContext_Query_cachedResourcePeers(ctx context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
-	fc = &graphql.FieldContext{
-		Object:     "Query",
-		Field:      field,
-		IsMethod:   true,
-		IsResolver: true,
-		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
-			return nil, errors.New("field of type String does not have child fields")
-		},
-	}
-	defer func() {
-		if r := recover(); r != nil {
-			err = ec.Recover(ctx, r)
-			ec.Error(ctx, err)
-		}
-	}()
-	ctx = graphql.WithFieldContext(ctx, fc)
-	if fc.Args, err = ec.field_Query_cachedResourcePeers_args(ctx, field.ArgumentMap(ec.Variables)); err != nil {
-		ec.Error(ctx, err)
-		return fc, err
-	}
-	return fc, nil
-}
-
 func (ec *executionContext) _Query___type(ctx context.Context, field graphql.CollectedField) (ret graphql.Marshaler) {
 	return graphql.ResolveField(
 		ctx,
@@ -1035,6 +982,50 @@ func (ec *executionContext) fieldContext_Subscription_publishCachedResources(ctx
 	}()
 	ctx = graphql.WithFieldContext(ctx, fc)
 	if fc.Args, err = ec.field_Subscription_publishCachedResources_args(ctx, field.ArgumentMap(ec.Variables)); err != nil {
+		ec.Error(ctx, err)
+		return fc, err
+	}
+	return fc, nil
+}
+
+func (ec *executionContext) _Subscription_cachedResourcePeers(ctx context.Context, field graphql.CollectedField) (ret func(ctx context.Context) graphql.Marshaler) {
+	return graphql.ResolveFieldStream(
+		ctx,
+		ec.OperationContext,
+		field,
+		func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			return ec.fieldContext_Subscription_cachedResourcePeers(ctx, field)
+		},
+		func(ctx context.Context) (any, error) {
+			fc := graphql.GetFieldContext(ctx)
+			return ec.Resolvers.Subscription().CachedResourcePeers(ctx, fc.Args["path"].(string))
+		},
+		nil,
+		func(ctx context.Context, selections ast.SelectionSet, v []string) graphql.Marshaler {
+			return ec.marshalNString2ᚕstringᚄ(ctx, selections, v)
+		},
+		true,
+		true,
+	)
+}
+func (ec *executionContext) fieldContext_Subscription_cachedResourcePeers(ctx context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	fc = &graphql.FieldContext{
+		Object:     "Subscription",
+		Field:      field,
+		IsMethod:   true,
+		IsResolver: true,
+		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			return nil, errors.New("field of type String does not have child fields")
+		},
+	}
+	defer func() {
+		if r := recover(); r != nil {
+			err = ec.Recover(ctx, r)
+			ec.Error(ctx, err)
+		}
+	}()
+	ctx = graphql.WithFieldContext(ctx, fc)
+	if fc.Args, err = ec.field_Subscription_cachedResourcePeers_args(ctx, field.ArgumentMap(ec.Variables)); err != nil {
 		ec.Error(ctx, err)
 		return fc, err
 	}
@@ -2507,28 +2498,6 @@ func (ec *executionContext) _Query(ctx context.Context, sel ast.SelectionSet) gr
 			}
 
 			out.Concurrently(i, func(ctx context.Context) graphql.Marshaler { return rrm(innerCtx) })
-		case "cachedResourcePeers":
-			field := field
-
-			innerFunc := func(ctx context.Context, fs *graphql.FieldSet) (res graphql.Marshaler) {
-				defer func() {
-					if r := recover(); r != nil {
-						ec.Error(ctx, ec.Recover(ctx, r))
-					}
-				}()
-				res = ec._Query_cachedResourcePeers(ctx, field)
-				if res == graphql.Null {
-					atomic.AddUint32(&fs.Invalids, 1)
-				}
-				return res
-			}
-
-			rrm := func(ctx context.Context) graphql.Marshaler {
-				return ec.OperationContext.RootResolverMiddleware(ctx,
-					func(ctx context.Context) graphql.Marshaler { return innerFunc(ctx, out) })
-			}
-
-			out.Concurrently(i, func(ctx context.Context) graphql.Marshaler { return rrm(innerCtx) })
 		case "__type":
 			out.Values[i] = ec.OperationContext.RootResolverMiddleware(innerCtx, func(ctx context.Context) (res graphql.Marshaler) {
 				return ec._Query___type(ctx, field)
@@ -2583,6 +2552,8 @@ func (ec *executionContext) _Subscription(ctx context.Context, sel ast.Selection
 		return ec._Subscription_sendData(ctx, fields[0])
 	case "publishCachedResources":
 		return ec._Subscription_publishCachedResources(ctx, fields[0])
+	case "cachedResourcePeers":
+		return ec._Subscription_cachedResourcePeers(ctx, fields[0])
 	case "listenSignaling":
 		return ec._Subscription_listenSignaling(ctx, fields[0])
 	case "sendSignaling":

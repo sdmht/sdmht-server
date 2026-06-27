@@ -49,11 +49,6 @@ func (r *queryResolver) Time(ctx context.Context) (*time.Time, error) {
 	return &now, nil
 }
 
-// CachedResourcePeers is the resolver for the cachedResourcePeers field.
-func (r *queryResolver) CachedResourcePeers(ctx context.Context, uid string, path string) ([]string, error) {
-	return r.game.GetCachedResourcePeers(uid, path), nil
-}
-
 // MatchOpponent is the resolver for the matchOpponent field.
 func (r *subscriptionResolver) MatchOpponent(ctx context.Context, uid string, size int32, version string) (<-chan any, error) {
 	log.Print(uid, " 匹配")
@@ -114,6 +109,14 @@ func (r *subscriptionResolver) PublishCachedResources(ctx context.Context, uid s
 	ch := make(chan *Void, 1)
 	defer close(ch)
 	r.game.PublishCachedResources(uid, paths)
+	return ch, nil
+}
+
+// CachedResourcePeers is the resolver for the cachedResourcePeers field.
+func (r *subscriptionResolver) CachedResourcePeers(ctx context.Context, path string) (<-chan []string, error) {
+	ch := make(chan []string, 1)
+	defer close(ch)
+	ch <- r.game.CachedResourcePeers(path)
 	return ch, nil
 }
 

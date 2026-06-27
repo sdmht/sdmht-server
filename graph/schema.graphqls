@@ -32,8 +32,6 @@ input PushSubscription {
 type Query {
   # 获取当前时间
   time: Time!
-  # 查询指定资源路径下除自己外的其他在线玩家uid列表
-  cachedResourcePeers(uid: String!, path: String!): [String!]!
 }
 
 # Mutation 变更类型
@@ -50,6 +48,8 @@ type Subscription {
   sendData(to: String!, data: JSON!): Void
   # 发布玩家已经缓存的资源路径列表
   publishCachedResources(uid: String!, paths: [String!]!): Void
+  # 查询指定资源路径下在线玩家uid列表
+  cachedResourcePeers(path: String!): [String!]!
   # 订阅信令接收，输入参数只有uid，持续监听其他人发来的信令，不关闭。
   listenSignaling(uid: String!): JSON!
   # 发送信令，uid为发送者的uid，to为对方的uid，data为发送的信令数据，无需返回值。

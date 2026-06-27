@@ -189,52 +189,54 @@ func TestSubscriptionMatch(t *testing.T) {
 	a.Equal(map[string]any{"world": "hello"}, msg_p4["matchOpponent"])
 }
 
-// 测试缓存发现功能
-// 第一部分：A先使用cachedResources保存['a.txt']，然后B调用cachedResourcePeers查a.txt，此时B那边应该返回包含A的uid的列表
 func TestCachedResourceDiscovery(t *testing.T) {
 	a := assert.New(t)
 	srv := setupGraphqlService()
 	c := client.New(srv)
 
-	// A 使用 cachedResources 保存资源路径
-	var mutationResult map[string]any
-	err := c.Post(`mutation { cachedResources(uid: "A", paths: ["a.txt", "b.txt"]) }`, &mutationResult)
-	a.NoError(err)
+	// A 使用 publishCachedResources 保存资源路径
+	var publishResult map[string]any
+	publishQuery := `subscription publishCachedResources($uid: String!, $paths: [String!]!) { publishCachedResources(uid: $uid, paths: $paths) }`
+	c.WebsocketOnce(publishQuery, &publishResult,
+		client.Var("uid", "A"),
+		client.Var("paths", []string{"a.txt", "b.txt"}),
+	)
+	a.Equal(nil, publishResult["publishCachedResources"])
 
 	// B 查询 a.txt 的对等节点
 	var queryResult map[string]any
-	err = c.Post(`query { cachedResourcePeers(uid: "B", path: "a.txt") }`, &queryResult)
-	a.NoError(err)
+	peersQuery := `subscription cachedResourcePeers($path: String!) { cachedResourcePeers(path: $path) }`
+	c.WebsocketOnce(peersQuery, &queryResult, client.Var("path", "a.txt"))
 	peers := queryResult["cachedResourcePeers"].([]any)
 	a.Equal(1, len(peers))
 	a.Equal("A", peers[0])
 
 	// B 查询 b.txt 的对等节点
-	err = c.Post(`query { cachedResourcePeers(uid: "B", path: "b.txt") }`, &queryResult)
-	a.NoError(err)
+	c.WebsocketOnce(peersQuery, &queryResult, client.Var("path", "b.txt"))
 	peers = queryResult["cachedResourcePeers"].([]any)
 	a.Equal(1, len(peers))
 	a.Equal("A", peers[0])
 
 	// B 查询不存在的资源
-	err = c.Post(`query { cachedResourcePeers(uid: "B", path: "c.txt") }`, &queryResult)
-	a.NoError(err)
+	c.WebsocketOnce(peersQuery, &queryResult, client.Var("path", "c.txt"))
 	peers = queryResult["cachedResourcePeers"].([]any)
 	a.Equal(0, len(peers))
 
-	// A 查询 a.txt 时应该排除自己
-	err = c.Post(`query { cachedResourcePeers(uid: "A", path: "a.txt") }`, &queryResult)
-	a.NoError(err)
+	// A 查询 a.txt
+	c.WebsocketOnce(peersQuery, &queryResult, client.Var("path", "a.txt"))
 	peers = queryResult["cachedResourcePeers"].([]any)
-	a.Equal(0, len(peers))
+	a.Equal(1, len(peers))
+	a.Equal("A", peers[0])
 
 	// C 也保存 a.txt
-	err = c.Post(`mutation { cachedResources(uid: "C", paths: ["a.txt"]) }`, &mutationResult)
-	a.NoError(err)
+	c.WebsocketOnce(publishQuery, &publishResult,
+		client.Var("uid", "C"),
+		client.Var("paths", []string{"a.txt"}),
+	)
+	a.Equal(nil, publishResult["publishCachedResources"])
 
 	// B 再次查询 a.txt，应该返回 A 和 C
-	err = c.Post(`query { cachedResourcePeers(uid: "B", path: "a.txt") }`, &queryResult)
-	a.NoError(err)
+	c.WebsocketOnce(peersQuery, &queryResult, client.Var("path", "a.txt"))
 	peers = queryResult["cachedResourcePeers"].([]any)
 	a.Equal(2, len(peers))
 	peerSet := make(map[string]bool)
@@ -328,22 +330,25 @@ func TestSignalingConnection(t *testing.T) {
 	a.NoError(sigB.Close())
 }
 
-// 测试完整的缓存资源发现和信令连接流程
 func TestCachedResourceAndSignalingIntegration(t *testing.T) {
 	a := assert.New(t)
 	srv := setupGraphqlService()
 	c := client.New(srv)
 
 	// 第一部分：发现
-	// A 先使用 cachedResources 保存资源
-	var mutationResult map[string]any
-	err := c.Post(`mutation { cachedResources(uid: "playerA", paths: ["resource.txt"]) }`, &mutationResult)
-	a.NoError(err)
+	// A 先使用 publishCachedResources 保存资源
+	var publishResult map[string]any
+	publishQuery := `subscription publishCachedResources($uid: String!, $paths: [String!]!) { publishCachedResources(uid: $uid, paths: $paths) }`
+	c.WebsocketOnce(publishQuery, &publishResult,
+		client.Var("uid", "playerA"),
+		client.Var("paths", []string{"resource.txt"}),
+	)
+	a.Equal(nil, publishResult["publishCachedResources"])
 
 	// B 调用 cachedResourcePeers 查询 resource.txt
 	var queryResult map[string]any
-	err = c.Post(`query { cachedResourcePeers(uid: "playerB", path: "resource.txt") }`, &queryResult)
-	a.NoError(err)
+	peersQuery := `subscription cachedResourcePeers($path: String!) { cachedResourcePeers(path: $path) }`
+	c.WebsocketOnce(peersQuery, &queryResult, client.Var("path", "resource.txt"))
 	peers := queryResult["cachedResourcePeers"].([]any)
 	a.Equal(1, len(peers))
 	targetUID := peers[0].(string)
@@ -391,8 +396,7 @@ func TestCachedResourceAndSignalingIntegration(t *testing.T) {
 
 	// 第三部分：C向A发起连接（C没有缓存资源）
 	// C 查询发现 A
-	err = c.Post(`query { cachedResourcePeers(uid: "playerC", path: "resource.txt") }`, &queryResult)
-	a.NoError(err)
+	c.WebsocketOnce(peersQuery, &queryResult, client.Var("path", "resource.txt"))
 	peers = queryResult["cachedResourcePeers"].([]any)
 	a.Equal(1, len(peers)) // 只有 A 缓存了资源
 	a.Equal("playerA", peers[0].(string))

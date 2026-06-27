@@ -100,3 +100,17 @@ func (g *Game) GetCachedResourcePeers(uid string, path string) []string {
 	}
 	return peers
 }
+
+func (g *Game) CachedResourcePeers(path string) []string {
+	g.crmu.RLock()
+	defer g.crmu.RUnlock()
+	uids, ok := g.cachedResources[path]
+	if !ok {
+		return []string{}
+	}
+	peers := make([]string, 0, len(uids))
+	for u := range uids {
+		peers = append(peers, u)
+	}
+	return peers
+}
