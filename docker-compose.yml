@@ -4,6 +4,7 @@ services:
     restart: always
     network_mode: host
     environment:
+      TZ: Asia/Shanghai
       DETECT_EXTERNAL_IP: "yes"
       DETECT_RELAY_IP: "yes"
     command: -vn --listening-port=34078 --log-file=stdout
