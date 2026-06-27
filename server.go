@@ -3,7 +3,6 @@ package main
 import (
 	"context"
 	"log"
-	"net/http"
 	"os"
 	"sdmht-server/db"
 	"sdmht-server/graph"
@@ -14,8 +13,8 @@ import (
 	"github.com/99designs/gqlgen/graphql/handler/lru"
 	"github.com/99designs/gqlgen/graphql/handler/transport"
 	"github.com/99designs/gqlgen/graphql/playground"
+	coderws "github.com/coder/websocket"
 	"github.com/gin-gonic/gin"
-	"github.com/gorilla/websocket"
 	_ "github.com/joho/godotenv/autoload"
 	"github.com/vektah/gqlparser/v2/ast"
 )
@@ -23,16 +22,16 @@ import (
 func setupGraphqlService() *handler.Server {
 	srv := handler.New(graph.NewExecutableSchema(graph.Config{Resolvers: graph.NewResolver()}))
 
-	srv.AddTransport(transport.Options{})
-	srv.AddTransport(transport.GET{})
-	srv.AddTransport(transport.POST{})
 	srv.AddTransport(transport.Websocket{
-		Upgrader: websocket.Upgrader{
-			CheckOrigin: func(r *http.Request) bool {
-				return true
+		Implementation: transport.CoderWebsocketImplementation{
+			AcceptOptions: coderws.AcceptOptions{
+				InsecureSkipVerify: true,
 			},
 		},
 	})
+	srv.AddTransport(transport.Options{})
+	srv.AddTransport(transport.GET{})
+	srv.AddTransport(transport.POST{})
 
 	srv.SetQueryCache(lru.New[*ast.QueryDocument](1000))
 

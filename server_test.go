@@ -64,6 +64,7 @@ func TestSubscriptionOnlineCount(t *testing.T) {
 			}
 			a.NoError(sub.Close())
 			count++
+			time.Sleep(9 * time.Millisecond)
 		}()
 	}
 	time.Sleep(100 * time.Millisecond)

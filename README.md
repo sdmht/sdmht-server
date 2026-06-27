@@ -29,5 +29,5 @@ go get -u -v all
 ## 生成 graphql 代码
 
 ```sh
-go run github.com/99designs/gqlgen@latest generate
+go tool gqlgen generate
 ```
