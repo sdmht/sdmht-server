@@ -17,7 +17,7 @@ go tool air
 ## 测试
 
 ```sh
-go test ./... -v
+go test -v
 ```
 
 ## 更新依赖

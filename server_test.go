@@ -389,7 +389,50 @@ func TestCachedResourceAndSignalingIntegration(t *testing.T) {
 	a.Equal("playerA", signalingData["uid"])
 	a.Equal(answerData, signalingData["data"])
 
+	// 第三部分：C向A发起连接（C没有缓存资源）
+	// C 查询发现 A
+	err = c.Post(`query { cachedResourcePeers(uid: "playerC", path: "resource.txt") }`, &queryResult)
+	a.NoError(err)
+	peers = queryResult["cachedResourcePeers"].([]any)
+	a.Equal(1, len(peers)) // 只有 A 缓存了资源
+	a.Equal("playerA", peers[0].(string))
+
+	// C 创建 signaling 订阅
+	sigC := c.Websocket(`subscription { signaling(uid: "playerC") }`)
+
+	// C 向 A 发送连接请求
+	offerDataC := map[string]any{"type": "offer", "sdp": "offer_sdp_from_c"}
+	c.WebsocketOnce(sendQuery, &sendResult,
+		client.Var("uid", "playerC"),
+		client.Var("to", "playerA"),
+		client.Var("data", offerDataC),
+	)
+	a.Equal(nil, sendResult["sendSignaling"])
+
+	// A 收到 C 的连接请求
+	a.NoError(sigA.Next(&msgA))
+	signalingData = msgA["signaling"].(map[string]any)
+	a.Equal("playerC", signalingData["uid"])
+	a.Equal(offerDataC, signalingData["data"])
+
+	// A 回复连接确认
+	answerDataC := map[string]any{"type": "answer", "sdp": "answer_sdp_for_c"}
+	c.WebsocketOnce(sendQuery, &sendResult,
+		client.Var("uid", "playerA"),
+		client.Var("to", "playerC"),
+		client.Var("data", answerDataC),
+	)
+	a.Equal(nil, sendResult["sendSignaling"])
+
+	// C 收到 A 的回复
+	var msgC map[string]any
+	a.NoError(sigC.Next(&msgC))
+	signalingDataC := msgC["signaling"].(map[string]any)
+	a.Equal("playerA", signalingDataC["uid"])
+	a.Equal(answerDataC, signalingDataC["data"])
+
 	// 关闭连接
 	a.NoError(sigA.Close())
 	a.NoError(sigB.Close())
+	a.NoError(sigC.Close())
 }
