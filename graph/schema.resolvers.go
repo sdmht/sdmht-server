@@ -42,6 +42,19 @@ func (r *mutationResolver) AddSubscription(ctx context.Context, subscription mod
 	return nil, nil
 }
 
+// CacheResources is the resolver for the cacheResources field.
+func (r *mutationResolver) CacheResources(ctx context.Context, uid string, paths []string) (*Void, error) {
+	r.game.Crmu.Lock()
+	defer r.game.Crmu.Unlock()
+	for _, path := range paths {
+		if _, ok := r.game.CachedResources[path]; !ok {
+			r.game.CachedResources[path] = make(map[string]struct{})
+		}
+		r.game.CachedResources[path][uid] = struct{}{}
+	}
+	return nil, nil
+}
+
 // Time is the resolver for the time field.
 func (r *queryResolver) Time(ctx context.Context) (*time.Time, error) {
 	now := time.Now()

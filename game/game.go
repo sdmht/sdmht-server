@@ -16,17 +16,20 @@ type Player struct {
 type PlayerMap map[string]Player
 
 type Game struct {
-	online_uids    arraylist.List
-	Player         PlayerMap
-	MatchingPlayer PlayerMap
-	Pmu            sync.RWMutex
-	Event          emitter.Emitter
+	online_uids      arraylist.List
+	Player           PlayerMap
+	MatchingPlayer   PlayerMap
+	Pmu              sync.RWMutex
+	Event            emitter.Emitter
+	CachedResources  map[string]map[string]struct{}
+	Crmu             sync.RWMutex
 }
 
 func NewGame() *Game {
 	g := &Game{
-		Player:         make(PlayerMap),
-		MatchingPlayer: make(PlayerMap),
+		Player:          make(PlayerMap),
+		MatchingPlayer:  make(PlayerMap),
+		CachedResources: make(map[string]map[string]struct{}),
 	}
 	g.Event.Use("*", emitter.Void)
 	return g
