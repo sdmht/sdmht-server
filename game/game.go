@@ -55,6 +55,14 @@ func (g *Game) Leave(uid string) {
 	log.Print(uid, " 离开")
 	g.online_uids.Remove(g.online_uids.IndexOf(uid))
 	g.OnlineChanged()
+	g.Crmu.Lock()
+	for path, uids := range g.CachedResources {
+		delete(uids, uid)
+		if len(uids) == 0 {
+			delete(g.CachedResources, path)
+		}
+	}
+	g.Crmu.Unlock()
 	go g.Event.Emit("leave" + uid)
 }
 
