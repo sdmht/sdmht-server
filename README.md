@@ -11,7 +11,7 @@ go mod tidy
 ## 启动服务
 
 ```sh
-air
+go tool air
 ```
 
 ## 测试
