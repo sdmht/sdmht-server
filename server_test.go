@@ -253,9 +253,9 @@ func TestSignalingConnection(t *testing.T) {
 	srv := setupGraphqlService()
 	c := client.New(srv)
 
-	// A 和 B 调用 signaling 保持监听
-	sigA := c.Websocket(`subscription { signaling(uid: "A") }`)
-	sigB := c.Websocket(`subscription { signaling(uid: "B") }`)
+	// A 和 B 调用 listenSignaling 保持监听
+	sigA := c.Websocket(`subscription { listenSignaling(uid: "A") }`)
+	sigB := c.Websocket(`subscription { listenSignaling(uid: "B") }`)
 
 	// B 使用 sendSignaling 向 A 发送连接数据
 	var sendResult map[string]any
@@ -269,10 +269,10 @@ func TestSignalingConnection(t *testing.T) {
 	)
 	a.Equal(nil, sendResult["sendSignaling"])
 
-	// A 的 signaling 应该收到数据
+	// A 的 listenSignaling 应该收到数据
 	var msgA map[string]any
 	a.NoError(sigA.Next(&msgA))
-	signalingData := msgA["signaling"].(map[string]any)
+	signalingData := msgA["listenSignaling"].(map[string]any)
 	a.Equal("B", signalingData["uid"])
 	a.Equal(bConnectData, signalingData["data"])
 
@@ -285,10 +285,10 @@ func TestSignalingConnection(t *testing.T) {
 	)
 	a.Equal(nil, sendResult["sendSignaling"])
 
-	// B 的 signaling 应该收到数据
+	// B 的 listenSignaling 应该收到数据
 	var msgB map[string]any
 	a.NoError(sigB.Next(&msgB))
-	signalingData = msgB["signaling"].(map[string]any)
+	signalingData = msgB["listenSignaling"].(map[string]any)
 	a.Equal("A", signalingData["uid"])
 	a.Equal(aConnectData, signalingData["data"])
 
@@ -304,7 +304,7 @@ func TestSignalingConnection(t *testing.T) {
 
 	// A 再次收到数据
 	a.NoError(sigA.Next(&msgA))
-	signalingData = msgA["signaling"].(map[string]any)
+	signalingData = msgA["listenSignaling"].(map[string]any)
 	a.Equal("B", signalingData["uid"])
 	a.Equal(bSecondData, signalingData["data"])
 
@@ -319,11 +319,11 @@ func TestSignalingConnection(t *testing.T) {
 
 	// B 再次收到数据
 	a.NoError(sigB.Next(&msgB))
-	signalingData = msgB["signaling"].(map[string]any)
+	signalingData = msgB["listenSignaling"].(map[string]any)
 	a.Equal("A", signalingData["uid"])
 	a.Equal(aSecondData, signalingData["data"])
 
-	// 关闭 signaling 订阅
+	// 关闭 listenSignaling 订阅
 	a.NoError(sigA.Close())
 	a.NoError(sigB.Close())
 }
@@ -350,9 +350,9 @@ func TestCachedResourceAndSignalingIntegration(t *testing.T) {
 	a.Equal("playerA", targetUID)
 
 	// 第二部分：连接
-	// A 和 B 调用 signaling 保持监听
-	sigA := c.Websocket(`subscription { signaling(uid: "playerA") }`)
-	sigB := c.Websocket(`subscription { signaling(uid: "playerB") }`)
+	// A 和 B 调用 listenSignaling 保持监听
+	sigA := c.Websocket(`subscription { listenSignaling(uid: "playerA") }`)
+	sigB := c.Websocket(`subscription { listenSignaling(uid: "playerB") }`)
 
 	// B 使用 sendSignaling 向 A 发送连接数据
 	var sendResult map[string]any
@@ -369,7 +369,7 @@ func TestCachedResourceAndSignalingIntegration(t *testing.T) {
 	// A 收到 B 的连接请求
 	var msgA map[string]any
 	a.NoError(sigA.Next(&msgA))
-	signalingData := msgA["signaling"].(map[string]any)
+	signalingData := msgA["listenSignaling"].(map[string]any)
 	a.Equal("playerB", signalingData["uid"])
 	a.Equal(connectData, signalingData["data"])
 
@@ -385,7 +385,7 @@ func TestCachedResourceAndSignalingIntegration(t *testing.T) {
 	// B 收到 A 的回复
 	var msgB map[string]any
 	a.NoError(sigB.Next(&msgB))
-	signalingData = msgB["signaling"].(map[string]any)
+	signalingData = msgB["listenSignaling"].(map[string]any)
 	a.Equal("playerA", signalingData["uid"])
 	a.Equal(answerData, signalingData["data"])
 
@@ -397,8 +397,8 @@ func TestCachedResourceAndSignalingIntegration(t *testing.T) {
 	a.Equal(1, len(peers)) // 只有 A 缓存了资源
 	a.Equal("playerA", peers[0].(string))
 
-	// C 创建 signaling 订阅
-	sigC := c.Websocket(`subscription { signaling(uid: "playerC") }`)
+	// C 创建 listenSignaling 订阅
+	sigC := c.Websocket(`subscription { listenSignaling(uid: "playerC") }`)
 
 	// C 向 A 发送连接请求
 	offerDataC := map[string]any{"type": "offer", "sdp": "offer_sdp_from_c"}
@@ -411,7 +411,7 @@ func TestCachedResourceAndSignalingIntegration(t *testing.T) {
 
 	// A 收到 C 的连接请求
 	a.NoError(sigA.Next(&msgA))
-	signalingData = msgA["signaling"].(map[string]any)
+	signalingData = msgA["listenSignaling"].(map[string]any)
 	a.Equal("playerC", signalingData["uid"])
 	a.Equal(offerDataC, signalingData["data"])
 
@@ -427,11 +427,11 @@ func TestCachedResourceAndSignalingIntegration(t *testing.T) {
 	// C 收到 A 的回复
 	var msgC map[string]any
 	a.NoError(sigC.Next(&msgC))
-	signalingDataC := msgC["signaling"].(map[string]any)
+	signalingDataC := msgC["listenSignaling"].(map[string]any)
 	a.Equal("playerA", signalingDataC["uid"])
 	a.Equal(answerDataC, signalingDataC["data"])
 
-	// 关闭连接
+	// 关闭 listenSignaling 订阅
 	a.NoError(sigA.Close())
 	a.NoError(sigB.Close())
 	a.NoError(sigC.Close())

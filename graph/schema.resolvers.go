@@ -114,11 +114,11 @@ func (r *subscriptionResolver) SendData(ctx context.Context, to string, data any
 	return ch, nil
 }
 
-// Signaling is the resolver for the signaling field.
-func (r *subscriptionResolver) Signaling(ctx context.Context, uid string) (<-chan any, error) {
+// ListenSignaling is the resolver for the listenSignaling field.
+func (r *subscriptionResolver) ListenSignaling(ctx context.Context, uid string) (<-chan any, error) {
 	log.Print(uid, " 订阅信令")
 	ch := make(chan any, 1)
-	topic := "signaling:" + uid
+	topic := "listen_signaling:" + uid
 	off := r.game.Event.On(topic, func(e *emitter.Event) {
 		ch <- e.Args[0]
 	})
@@ -138,7 +138,7 @@ func (r *subscriptionResolver) SendSignaling(ctx context.Context, uid string, to
 	log.Print(uid, " 向 ", to, " 发送信令：", data)
 	ch := make(chan *Void, 1)
 	defer close(ch)
-	go r.game.Event.Emit("signaling:"+to, map[string]any{"uid": uid, "data": data})
+	go r.game.Event.Emit("listen_signaling:"+to, map[string]any{"uid": uid, "data": data})
 	return ch, nil
 }
 

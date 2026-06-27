@@ -50,14 +50,14 @@ type ComplexityRoot struct {
 	}
 
 	Subscription struct {
-		Heartbeat     func(childComplexity int, uid string) int
-		ListenAlive   func(childComplexity int, uid string) int
-		MatchOpponent func(childComplexity int, uid string, size int32, version string) int
-		OnlineCount   func(childComplexity int) int
-		SendData      func(childComplexity int, to string, data any) int
-		SendSignaling func(childComplexity int, uid string, to string, data any) int
-		Signaling     func(childComplexity int, uid string) int
-		Time          func(childComplexity int) int
+		Heartbeat       func(childComplexity int, uid string) int
+		ListenAlive     func(childComplexity int, uid string) int
+		ListenSignaling func(childComplexity int, uid string) int
+		MatchOpponent   func(childComplexity int, uid string, size int32, version string) int
+		OnlineCount     func(childComplexity int) int
+		SendData        func(childComplexity int, to string, data any) int
+		SendSignaling   func(childComplexity int, uid string, to string, data any) int
+		Time            func(childComplexity int) int
 	}
 }
 
@@ -76,7 +76,7 @@ type QueryResolver interface {
 type SubscriptionResolver interface {
 	MatchOpponent(ctx context.Context, uid string, size int32, version string) (<-chan any, error)
 	SendData(ctx context.Context, to string, data any) (<-chan *Void, error)
-	Signaling(ctx context.Context, uid string) (<-chan any, error)
+	ListenSignaling(ctx context.Context, uid string) (<-chan any, error)
 	SendSignaling(ctx context.Context, uid string, to string, data any) (<-chan *Void, error)
 	Heartbeat(ctx context.Context, uid string) (<-chan *Void, error)
 	ListenAlive(ctx context.Context, uid string) (<-chan *Void, error)
@@ -166,6 +166,17 @@ func (e *executableSchema) Complexity(ctx context.Context, typeName, field strin
 		}
 
 		return e.ComplexityRoot.Subscription.ListenAlive(childComplexity, args["uid"].(string)), true
+	case "Subscription.listenSignaling":
+		if e.ComplexityRoot.Subscription.ListenSignaling == nil {
+			break
+		}
+
+		args, err := ec.field_Subscription_listenSignaling_args(ctx, rawArgs)
+		if err != nil {
+			return 0, false
+		}
+
+		return e.ComplexityRoot.Subscription.ListenSignaling(childComplexity, args["uid"].(string)), true
 	case "Subscription.matchOpponent":
 		if e.ComplexityRoot.Subscription.MatchOpponent == nil {
 			break
@@ -205,17 +216,6 @@ func (e *executableSchema) Complexity(ctx context.Context, typeName, field strin
 		}
 
 		return e.ComplexityRoot.Subscription.SendSignaling(childComplexity, args["uid"].(string), args["to"].(string), args["data"].(any)), true
-	case "Subscription.signaling":
-		if e.ComplexityRoot.Subscription.Signaling == nil {
-			break
-		}
-
-		args, err := ec.field_Subscription_signaling_args(ctx, rawArgs)
-		if err != nil {
-			return 0, false
-		}
-
-		return e.ComplexityRoot.Subscription.Signaling(childComplexity, args["uid"].(string)), true
 	case "Subscription.time":
 		if e.ComplexityRoot.Subscription.Time == nil {
 			break
@@ -560,6 +560,20 @@ func (ec *executionContext) field_Subscription_listenAlive_args(ctx context.Cont
 	return args, nil
 }
 
+func (ec *executionContext) field_Subscription_listenSignaling_args(ctx context.Context, rawArgs map[string]any) (map[string]any, error) {
+	var err error
+	args := map[string]any{}
+	arg0, err := graphql.ProcessArgField(ctx, rawArgs, "uid",
+		func(ctx context.Context, v any) (string, error) {
+			return ec.unmarshalNString2string(ctx, v)
+		})
+	if err != nil {
+		return nil, err
+	}
+	args["uid"] = arg0
+	return args, nil
+}
+
 func (ec *executionContext) field_Subscription_matchOpponent_args(ctx context.Context, rawArgs map[string]any) (map[string]any, error) {
 	var err error
 	args := map[string]any{}
@@ -639,20 +653,6 @@ func (ec *executionContext) field_Subscription_sendSignaling_args(ctx context.Co
 		return nil, err
 	}
 	args["data"] = arg2
-	return args, nil
-}
-
-func (ec *executionContext) field_Subscription_signaling_args(ctx context.Context, rawArgs map[string]any) (map[string]any, error) {
-	var err error
-	args := map[string]any{}
-	arg0, err := graphql.ProcessArgField(ctx, rawArgs, "uid",
-		func(ctx context.Context, v any) (string, error) {
-			return ec.unmarshalNString2string(ctx, v)
-		})
-	if err != nil {
-		return nil, err
-	}
-	args["uid"] = arg0
 	return args, nil
 }
 
@@ -1041,17 +1041,17 @@ func (ec *executionContext) fieldContext_Subscription_sendData(ctx context.Conte
 	return fc, nil
 }
 
-func (ec *executionContext) _Subscription_signaling(ctx context.Context, field graphql.CollectedField) (ret func(ctx context.Context) graphql.Marshaler) {
+func (ec *executionContext) _Subscription_listenSignaling(ctx context.Context, field graphql.CollectedField) (ret func(ctx context.Context) graphql.Marshaler) {
 	return graphql.ResolveFieldStream(
 		ctx,
 		ec.OperationContext,
 		field,
 		func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
-			return ec.fieldContext_Subscription_signaling(ctx, field)
+			return ec.fieldContext_Subscription_listenSignaling(ctx, field)
 		},
 		func(ctx context.Context) (any, error) {
 			fc := graphql.GetFieldContext(ctx)
-			return ec.Resolvers.Subscription().Signaling(ctx, fc.Args["uid"].(string))
+			return ec.Resolvers.Subscription().ListenSignaling(ctx, fc.Args["uid"].(string))
 		},
 		nil,
 		func(ctx context.Context, selections ast.SelectionSet, v any) graphql.Marshaler {
@@ -1061,7 +1061,7 @@ func (ec *executionContext) _Subscription_signaling(ctx context.Context, field g
 		true,
 	)
 }
-func (ec *executionContext) fieldContext_Subscription_signaling(ctx context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+func (ec *executionContext) fieldContext_Subscription_listenSignaling(ctx context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
 	fc = &graphql.FieldContext{
 		Object:     "Subscription",
 		Field:      field,
@@ -1078,7 +1078,7 @@ func (ec *executionContext) fieldContext_Subscription_signaling(ctx context.Cont
 		}
 	}()
 	ctx = graphql.WithFieldContext(ctx, fc)
-	if fc.Args, err = ec.field_Subscription_signaling_args(ctx, field.ArgumentMap(ec.Variables)); err != nil {
+	if fc.Args, err = ec.field_Subscription_listenSignaling_args(ctx, field.ArgumentMap(ec.Variables)); err != nil {
 		ec.Error(ctx, err)
 		return fc, err
 	}
@@ -2588,8 +2588,8 @@ func (ec *executionContext) _Subscription(ctx context.Context, sel ast.Selection
 		return ec._Subscription_matchOpponent(ctx, fields[0])
 	case "sendData":
 		return ec._Subscription_sendData(ctx, fields[0])
-	case "signaling":
-		return ec._Subscription_signaling(ctx, fields[0])
+	case "listenSignaling":
+		return ec._Subscription_listenSignaling(ctx, fields[0])
 	case "sendSignaling":
 		return ec._Subscription_sendSignaling(ctx, fields[0])
 	case "heartbeat":
