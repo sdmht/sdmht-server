@@ -16,20 +16,20 @@ type Player struct {
 type PlayerMap map[string]Player
 
 type Game struct {
-	online_uids      arraylist.List
-	Player           PlayerMap
-	MatchingPlayer   PlayerMap
-	Pmu              sync.RWMutex
-	Event            emitter.Emitter
-	CachedResources  map[string]map[string]struct{}
-	Crmu             sync.RWMutex
+	online_uids     arraylist.List
+	Player          PlayerMap
+	MatchingPlayer  PlayerMap
+	Pmu             sync.RWMutex
+	Event           emitter.Emitter
+	cachedResources map[string]map[string]struct{}
+	crmu            sync.RWMutex
 }
 
 func NewGame() *Game {
 	g := &Game{
 		Player:          make(PlayerMap),
 		MatchingPlayer:  make(PlayerMap),
-		CachedResources: make(map[string]map[string]struct{}),
+		cachedResources: make(map[string]map[string]struct{}),
 	}
 	g.Event.Use("*", emitter.Void)
 	return g
@@ -55,17 +55,48 @@ func (g *Game) Leave(uid string) {
 	log.Print(uid, " 离开")
 	g.online_uids.Remove(g.online_uids.IndexOf(uid))
 	g.OnlineChanged()
-	g.Crmu.Lock()
-	for path, uids := range g.CachedResources {
-		delete(uids, uid)
-		if len(uids) == 0 {
-			delete(g.CachedResources, path)
-		}
-	}
-	g.Crmu.Unlock()
+	g.RemoveCachedResources(uid)
 	go g.Event.Emit("leave:" + uid)
 }
 
 func (g *Game) IsOnline(uid string) bool {
 	return g.online_uids.Contains(uid)
+}
+
+func (g *Game) AddCachedResources(uid string, paths []string) {
+	g.crmu.Lock()
+	defer g.crmu.Unlock()
+	for _, path := range paths {
+		if _, ok := g.cachedResources[path]; !ok {
+			g.cachedResources[path] = make(map[string]struct{})
+		}
+		g.cachedResources[path][uid] = struct{}{}
+	}
+}
+
+func (g *Game) RemoveCachedResources(uid string) {
+	g.crmu.Lock()
+	defer g.crmu.Unlock()
+	for path, uids := range g.cachedResources {
+		delete(uids, uid)
+		if len(uids) == 0 {
+			delete(g.cachedResources, path)
+		}
+	}
+}
+
+func (g *Game) GetCachedResourcePeers(uid string, path string) []string {
+	g.crmu.RLock()
+	defer g.crmu.RUnlock()
+	uids, ok := g.cachedResources[path]
+	if !ok {
+		return []string{}
+	}
+	peers := make([]string, 0, len(uids)-1)
+	for u := range uids {
+		if u != uid {
+			peers = append(peers, u)
+		}
+	}
+	return peers
 }

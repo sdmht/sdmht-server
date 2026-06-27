@@ -45,14 +45,7 @@ func (r *mutationResolver) AddSubscription(ctx context.Context, subscription mod
 
 // CachedResources is the resolver for the cachedResources field.
 func (r *mutationResolver) CachedResources(ctx context.Context, uid string, paths []string) (*Void, error) {
-	r.game.Crmu.Lock()
-	defer r.game.Crmu.Unlock()
-	for _, path := range paths {
-		if _, ok := r.game.CachedResources[path]; !ok {
-			r.game.CachedResources[path] = make(map[string]struct{})
-		}
-		r.game.CachedResources[path][uid] = struct{}{}
-	}
+	r.game.AddCachedResources(uid, paths)
 	return nil, nil
 }
 
@@ -64,19 +57,7 @@ func (r *queryResolver) Time(ctx context.Context) (*time.Time, error) {
 
 // CachedResourcePeers is the resolver for the cachedResourcePeers field.
 func (r *queryResolver) CachedResourcePeers(ctx context.Context, uid string, path string) ([]string, error) {
-	r.game.Crmu.RLock()
-	defer r.game.Crmu.RUnlock()
-	uids, ok := r.game.CachedResources[path]
-	if !ok {
-		return []string{}, nil
-	}
-	peers := make([]string, 0, len(uids)-1)
-	for u := range uids {
-		if u != uid {
-			peers = append(peers, u)
-		}
-	}
-	return peers, nil
+	return r.game.GetCachedResourcePeers(uid, path), nil
 }
 
 // MatchOpponent is the resolver for the matchOpponent field.
