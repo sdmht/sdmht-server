@@ -63,7 +63,7 @@ func (g *Game) Leave(uid string) {
 		}
 	}
 	g.Crmu.Unlock()
-	go g.Event.Emit("leave" + uid)
+	go g.Event.Emit("leave:" + uid)
 }
 
 func (g *Game) IsOnline(uid string) bool {

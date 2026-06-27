@@ -83,7 +83,7 @@ func (r *queryResolver) CachedResourcePeers(ctx context.Context, uid string, pat
 func (r *subscriptionResolver) MatchOpponent(ctx context.Context, uid string, size int32, version string) (<-chan any, error) {
 	log.Print(uid, " 匹配")
 	ch := make(chan any, 1)
-	topic := "send_data" + uid
+	topic := "send_data:" + uid
 	off := r.game.Event.On(topic, func(e *emitter.Event) {
 		ch <- e.Args[0]
 	})
@@ -106,7 +106,7 @@ func (r *subscriptionResolver) MatchOpponent(ctx context.Context, uid string, si
 			if p.Size == size && p.Version == version && o_uid != uid {
 				log.Print(uid, " 匹配到 ", o_uid)
 				delete(r.game.MatchingPlayer, o_uid)
-				go r.game.Event.Emit("send_data"+o_uid, uid)
+				go r.game.Event.Emit("send_data:"+o_uid, uid)
 				ch <- ""
 				ch <- o_uid
 				is_matched = true
@@ -129,7 +129,7 @@ func (r *subscriptionResolver) SendData(ctx context.Context, to string, data any
 	log.Print("向 ", to, " 发送数据：", data)
 	ch := make(chan *Void, 1)
 	defer close(ch)
-	go r.game.Event.Emit("send_data"+to, data)
+	go r.game.Event.Emit("send_data:"+to, data)
 	return ch, nil
 }
 
@@ -182,7 +182,7 @@ func (r *subscriptionResolver) ListenAlive(ctx context.Context, uid string) (<-c
 			ch <- nil
 			return
 		}
-		topic := "leave" + uid
+		topic := "leave:" + uid
 		off := r.game.Event.On(topic, func(e *emitter.Event) {
 			ch <- nil
 		})
