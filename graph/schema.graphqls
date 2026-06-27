@@ -29,6 +29,10 @@ type Subscription {
   matchOpponent(uid: String!, size: Int! = 4, version: String! = ""): JSON!
   # 发送数据，to为对方的uid，data为发送的数据，无需返回值。
   sendData(to: String!, data: JSON!): Void
+  # 订阅信令接收，输入参数只有uid，持续监听其他人发来的信令，不关闭。
+  signaling(uid: String!): JSON!
+  # 发送信令，uid为发送者的uid，to为对方的uid，data为发送的信令数据，无需返回值。
+  sendSignaling(uid: String!, to: String!, data: JSON!): Void
   # 玩家发送自己的uid，然后循环每秒更新一下此uid的最后活跃时间，期间无需返回，当超过3秒没有更新，则认为玩家已掉线，此时直接返回nil即可。
   heartbeat(uid: String!): Void
   # 玩家监听对手是否在线，直到对手掉线时，返回nil

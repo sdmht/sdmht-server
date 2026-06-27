@@ -133,6 +133,34 @@ func (r *subscriptionResolver) SendData(ctx context.Context, to string, data any
 	return ch, nil
 }
 
+// Signaling is the resolver for the signaling field.
+func (r *subscriptionResolver) Signaling(ctx context.Context, uid string) (<-chan any, error) {
+	log.Print(uid, " 订阅信令")
+	ch := make(chan any, 1)
+	topic := "signaling:" + uid
+	off := r.game.Event.On(topic, func(e *emitter.Event) {
+		ch <- e.Args[0]
+	})
+	go func() {
+		defer func() {
+			r.game.Event.Off(topic, off)
+			close(ch)
+		}()
+		<-ctx.Done()
+		log.Print(uid, " 信令订阅结束")
+	}()
+	return ch, nil
+}
+
+// SendSignaling is the resolver for the sendSignaling field.
+func (r *subscriptionResolver) SendSignaling(ctx context.Context, uid string, to string, data any) (<-chan *Void, error) {
+	log.Print(uid, " 向 ", to, " 发送信令：", data)
+	ch := make(chan *Void, 1)
+	defer close(ch)
+	go r.game.Event.Emit("signaling:"+to, map[string]any{"uid": uid, "data": data})
+	return ch, nil
+}
+
 // Heartbeat is the resolver for the heartbeat field.
 func (r *subscriptionResolver) Heartbeat(ctx context.Context, uid string) (<-chan *Void, error) {
 	ch := make(chan *Void, 1)
